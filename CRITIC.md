@@ -1,6 +1,6 @@
-# CryoCritic — Loop 4 visual self-critique
+# CryoCritic — Loop 5 visual self-critique
 
-**Verdict: FAIL vs modern Call of Duty.** Expected. Browser Three.js greybox with real HDRI + CC0 glTF soldier; still not IW/Treyarch production.
+**Verdict: FAIL vs modern Call of Duty.** Expected. Browser Three.js greybox with hierarchical combat poses on CC0 soldier + HDRI; still not IW/Treyarch production.
 
 Artifact-Gate (screenshots + green build + Pages) is the deliverable bar. **Do not claim CoD PASS.**
 
@@ -16,36 +16,36 @@ Artifact-Gate (screenshots + green build + Pages) is the deliverable bar. **Do n
 
 ### Perf note (best-effort, Low preset)
 
-Measured via on-screen FPS counter (`F3` / `?fps=1`) during short headless Chrome + SwiftShader captures on the Linux agent box (software WebGL — **not** a console/desktop GPU frame-time capture):
+**No `/dev/dri` on the agent box** — captures use Chrome headless + **SwiftShader** (`--use-angle=swiftshader`). Not a discrete-GPU frame-time capture.
 
-| Context | Approx FPS | Approx 1% low |
-|---------|------------|---------------|
-| Desktop Low (1440×900, `quality=low`) | **~22** | noisy / mid-teens (SwiftShader) |
-| Mobile Low (390×844, `quality=low`) | **~20** | **~20** |
+| Context | Approx FPS | Approx 1% low | Notes |
+|---------|------------|---------------|-------|
+| Desktop Low (1440×900, `quality=low`) | **~20–24** (headless noise; virtual-time dumps unusable) | mid-teens | **SwiftShader only** — no `/dev/dri` |
+| Mobile Low (390×844, `quality=low`) | **~18–22** | ~18–20 | SwiftShader |
 
-Expect materially higher numbers on a real discrete GPU. Low preset keeps ShadowMap **≤512**, no bloom/SSAO. Treat as directional only.
+Expect materially higher numbers on a real discrete GPU. Low preset keeps ShadowMap **≤512**, no bloom/SSAO.
 
-## What improved (Loop 3 → Loop 4)
+## What improved (Loop 4 → Loop 5)
 
-- **Real HDRI:** Poly Haven *Empty Warehouse 01* (CC0, 1k) via `RGBELoader` + `PMREMGenerator`; `environmentIntensity` ~1.15 for stronger indirect. Scene background stays fog-tuned solid (engagement readability), not a full skybox wash. RoomEnvironment remains fallback only.
-- **CC0 glTF soldier + rifle:** OpenGameArt *Low Poly Soldier with weapons* (Casti_131, CC0) slim-exported to `public/models/soldier_rifle_cc0.glb` (~43KB: posed male mesh + assault rifle). Enemy instances clone the GLB; procedural soldier retained as load-failure fallback. Viewmodel stays procedural with **gloved hands** (GLB rifle kept world-scale for enemies; FPS viewmodel proportions differ).
-- **Killcam-lite:** ELIMINATED banner + brief timescale/FOV punch on kill; stylized crimson impact blotches (not gore-heavy).
-- **Audio:** Richer layered procedural synth (bandpass noise + multi-tone gun/kill); no third-party sample pack required.
-- **FPS counter:** Toggle with **F3** / backtick; shows FPS + rolling 1% low estimate.
+- **Combat poses (kill T-pose):** CC0 slim GLB has **no skin weights**. Loop 5 uses a hierarchical procedural body (`soldierRig.ts`) with keyframed **idle / walk / aim / fire / cover / death** + walk cycle and ragdoll-lite death tumble (fall + fade). CC0 **assault rifle** attaches to the weapon socket (world-matched). Honest: not GPU-skinned MetaHuman clips.
+- **Viewmodel:** **Procedural intentional** — gloved hands + readable ADS holo optic, proportions matched to ~0.75m world rifle length. CC0 GLB rifle stays on **enemy** weapon sockets (author mesh is world-prop oriented, not FPS-rigged).
+- **ADS optic:** Larger holo window + ring/center reticle; ADS pose pulls optic closer to eye.
+- **World density:** Extra cover, barrels, deterministic debris piles, wall/floor grit, cables/conduits, warning signage — breaks flat greybox planes.
+- **Combat juice:** Stronger hit emissive + flinch lean; thicker tracer + hot core; brighter impact flash/sparks; denser stylized blood blotches; death ragdoll-lite via rig.
 - **Shadows:** Low still **512**; Med 1536; High 2048.
 
 ## What still fails vs modern CoD (harsh)
 
-1. Soldier is CC0 low-poly static pose — not MetaHuman / authored LODs / skeletal combat anims.
-2. HDRI drives reflections only; no lightmaps, probes, or volumetrics; fog still Exp2.
+1. Not true GPU skinning / authored anim clips / LODs — hierarchical procedural body + GLB rifle, not MetaHuman.
+2. HDRI reflections only; no lightmaps, probes, or volumetrics; fog still Exp2.
 3. Materials mostly procedural noise / simple PBR; no AAA trim sheets.
 4. Post: not TAAU / weapon DOF / local exposure.
-5. Viewmodel still procedural (hands polished); no inspect / attachment swap.
+5. Viewmodel hybrid (GLB rifle + procedural hands/optic); no inspect / attachment swap.
 6. AI: static cover anchors; no navmesh / suppression / flanking.
-7. World: greybox density vs CoD multiplayer lanes.
+7. World denser but still greybox vs CoD multiplayer art.
 8. Audio: richer synth, still not recorded Foley packs.
-9. Perf: SSAO costly on high; no occlusion culling / GPU particles.
-10. Juice: CSS HUD killcam-lite ≠ full killcam / ragdoll.
+9. Perf: SSAO costly on high; no occlusion culling / GPU particles; agent FPS is SwiftShader-only.
+10. Juice: killcam-lite + ragdoll-lite ≠ full killcam / PhysX ragdoll.
 
 ## Gate artifacts
 
@@ -56,4 +56,4 @@ Expect materially higher numbers on a real discrete GPU. Low preset keeps Shadow
 
 ## Next loops
 
-- Skinned aim/walk clips on the CC0 soldier; optional viewmodel GLB rifle scale pass; light probes / AO bake; navgrid; streamed one-shots if a clean CC0 pack fits size budget
+- Real skinned GLB (or embed weights) with aim/walk clips; navgrid; light probes / AO bake; streamed CC0 Foley if size budget allows

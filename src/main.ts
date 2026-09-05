@@ -40,7 +40,7 @@ async function boot(): Promise<void> {
 
   const assets = await loadSoldierAssets();
   const effects = new CombatEffects(gfx.scene);
-  const weapon = new Rifle(gfx.camera, effects);
+  const weapon = new Rifle(gfx.camera, effects, assets);
   weapon.setMotionScale(gfx.motionScale);
   const enemies = createEnemies(arena.spawnPoints, arena.colliders, arena.coverPoints, 4, assets);
   for (const e of enemies) gfx.scene.add(e.mesh);
@@ -218,12 +218,19 @@ async function boot(): Promise<void> {
     document.documentElement.classList.add('capture-mode');
     hud.showOverlay(false);
     if (__CAPTURE__ === 'mid') {
-      player.object.position.set(0, 1.7, 6);
-      gfx.camera.rotation.set(-0.08, 0.35, 0);
+      player.object.position.set(0, 1.7, 8);
+      gfx.camera.rotation.set(-0.06, 0.15, 0);
       if (enemies[0]) {
-        enemies[0].mesh.position.set(4.5, 0, 1.5);
-        enemies[0].mesh.rotation.y = -0.8;
-        enemies[0].state = 'patrol';
+        enemies[0].mesh.position.set(3.2, 0, 3.5);
+        enemies[0].mesh.rotation.y = Math.PI + 0.35;
+        enemies[0].state = 'shoot';
+        for (let i = 0; i < 24; i++) enemies[0].update(1 / 30, 1 + i / 30, player.object.position, true);
+      }
+      if (enemies[1]) {
+        enemies[1].mesh.position.set(5.5, 0, 2.0);
+        enemies[1].mesh.rotation.y = Math.PI + 0.1;
+        enemies[1].state = 'cover';
+        for (let i = 0; i < 24; i++) enemies[1].update(1 / 30, 1 + i / 30, player.object.position, true);
       }
     }
     if (__CAPTURE__ === 'combat') {
@@ -242,17 +249,21 @@ async function boot(): Promise<void> {
     }
     if (__CAPTURE__ === 'combat' && enemies[0]) {
       enemies[0].mesh.position.set(4.2, 0, 5.0);
-      enemies[0].mesh.rotation.y = 0;
+      enemies[0].mesh.rotation.y = Math.PI;
       enemies[0].state = 'shoot';
+      // Settle aim pose
+      for (let i = 0; i < 45; i++) enemies[0].update(1 / 20, 2 + i / 20, player.object.position, true);
       if (enemies[1]) {
         enemies[1].mesh.position.set(6.0, 0, 4.2);
-        enemies[1].mesh.rotation.y = 0.35;
+        enemies[1].mesh.rotation.y = Math.PI + 0.35;
         enemies[1].state = 'cover';
+        for (let i = 0; i < 20; i++) enemies[1].update(1 / 30, 2 + i / 30, player.object.position, true);
       }
       if (enemies[2]) {
         enemies[2].mesh.position.set(2.4, 0, 3.5);
-        enemies[2].mesh.rotation.y = -0.4;
+        enemies[2].mesh.rotation.y = Math.PI - 0.4;
         enemies[2].state = 'chase';
+        for (let i = 0; i < 20; i++) enemies[2].update(1 / 30, 2 + i / 30, player.object.position, true);
       }
     }
     (window as unknown as { __COG_READY__?: boolean }).__COG_READY__ = true;
@@ -263,7 +274,7 @@ async function boot(): Promise<void> {
   requestAnimationFrame(frame);
 
   console.info(
-    `%cCall of Groky%c loop4 quality=${gfx.quality.preset} aa=${gfx.quality.postAA} bloom=${gfx.quality.bloom} ssao=${gfx.quality.ssao} gltf=${assets.ok}`,
+    `%cCall of Groky%c loop5 quality=${gfx.quality.preset} aa=${gfx.quality.postAA} bloom=${gfx.quality.bloom} ssao=${gfx.quality.ssao} gltf=${assets.ok} vmRifle=${weapon.usedGltfRifle}`,
     'color:#5ce1ff;font-weight:bold',
     'color:#8899aa',
   );

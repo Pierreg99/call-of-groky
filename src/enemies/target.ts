@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { gameAudio } from '../audio/sfx';
-import { cloneSoldier, type SoldierAssets } from './gltfAssets';
+import type { SoldierAssets } from './gltfAssets';
+import { createSoldierRig, type SoldierRig, type SoldierPose } from './soldierRig';
 
 export type EnemyState = 'patrol' | 'chase' | 'shoot' | 'cover' | 'dead';
 
@@ -10,141 +11,8 @@ export interface EnemyShotEvent {
 }
 
 export interface CoverPoint {
-  /** Stand / peek position */
   pos: THREE.Vector3;
-  /** Facing while in cover (toward expected threat) */
   facing: THREE.Vector3;
-}
-
-/** Low-poly soldier silhouette — helmet / armor / limbs, faction contrast */
-function buildSoldierMesh(
-  bodyMat: THREE.MeshStandardMaterial,
-  armorMat: THREE.MeshStandardMaterial,
-  helmetMat: THREE.MeshStandardMaterial,
-  skinMat: THREE.MeshStandardMaterial,
-  accentMat: THREE.MeshStandardMaterial,
-  gunMat: THREE.MeshStandardMaterial,
-): { root: THREE.Group; muzzleLocal: THREE.Vector3 } {
-  const root = new THREE.Group();
-
-  // Boots
-  const bootL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.32), armorMat);
-  bootL.position.set(-0.14, 0.06, 0.02);
-  bootL.castShadow = true;
-  const bootR = bootL.clone();
-  bootR.position.x = 0.14;
-  root.add(bootL, bootR);
-
-  // Legs
-  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.55, 0.22), bodyMat);
-  legL.position.set(-0.14, 0.4, 0);
-  legL.castShadow = true;
-  legL.receiveShadow = true;
-  const legR = legL.clone();
-  legR.position.x = 0.14;
-  root.add(legL, legR);
-
-  // Hips / belt
-  const hips = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.22, 0.28), armorMat);
-  hips.position.set(0, 0.72, 0);
-  hips.castShadow = true;
-  root.add(hips);
-
-  // Torso
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.55, 0.3), bodyMat);
-  torso.position.set(0, 1.1, 0);
-  torso.castShadow = true;
-  torso.receiveShadow = true;
-  root.add(torso);
-
-  // Chest plate (armor contrast)
-  const plate = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.38, 0.12), armorMat);
-  plate.position.set(0, 1.15, 0.14);
-  plate.castShadow = true;
-  root.add(plate);
-
-  // Faction stripe on plate
-  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.06, 0.02), accentMat);
-  stripe.position.set(0, 1.22, 0.21);
-  root.add(stripe);
-
-  // Shoulders / pads
-  const padL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.28), armorMat);
-  padL.position.set(-0.34, 1.38, 0);
-  padL.castShadow = true;
-  const padR = padL.clone();
-  padR.position.x = 0.34;
-  root.add(padL, padR);
-
-  // Arms
-  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.48, 0.16), bodyMat);
-  armL.position.set(-0.4, 1.05, 0.05);
-  armL.rotation.z = 0.12;
-  armL.castShadow = true;
-  const armR = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.42, 0.16), bodyMat);
-  armR.position.set(0.38, 1.08, 0.12);
-  armR.rotation.x = -0.55;
-  armR.rotation.z = -0.08;
-  armR.castShadow = true;
-  root.add(armL, armR);
-
-  // Neck / head
-  const neck = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.1, 0.14), skinMat);
-  neck.position.set(0, 1.42, 0);
-  root.add(neck);
-
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.26, 0.28), skinMat);
-  head.position.set(0, 1.58, 0.02);
-  head.castShadow = true;
-  root.add(head);
-
-  // Helmet — readable silhouette
-  const helmet = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 0.36), helmetMat);
-  helmet.position.set(0, 1.72, 0.02);
-  helmet.castShadow = true;
-  root.add(helmet);
-  const visor = new THREE.Mesh(
-    new THREE.BoxGeometry(0.3, 0.06, 0.08),
-    new THREE.MeshStandardMaterial({
-      color: 0x0a1014,
-      emissive: 0xff2a3a,
-      emissiveIntensity: 0.9,
-      roughness: 0.25,
-      metalness: 0.6,
-    }),
-  );
-  visor.position.set(0, 1.66, 0.18);
-  root.add(visor);
-  const brim = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.04, 0.1), helmetMat);
-  brim.position.set(0, 1.64, 0.18);
-  root.add(brim);
-
-  // Backpack pouch (mass / silhouette)
-  const pack = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.36, 0.14), armorMat);
-  pack.position.set(0, 1.15, -0.2);
-  pack.castShadow = true;
-  root.add(pack);
-
-  // Rifle prop — held across body
-  const rifle = new THREE.Group();
-  const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.42), gunMat);
-  rifle.add(receiver);
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.018, 0.28, 6), gunMat);
-  barrel.rotation.x = Math.PI / 2;
-  barrel.position.set(0, 0.01, -0.32);
-  rifle.add(barrel);
-  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.07, 0.16), gunMat);
-  stock.position.set(0, -0.01, 0.26);
-  rifle.add(stock);
-  const mag = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.06), gunMat);
-  mag.position.set(0, -0.08, 0.02);
-  rifle.add(mag);
-  rifle.position.set(0.28, 1.12, 0.28);
-  rifle.rotation.y = -0.15;
-  rifle.rotation.x = 0.08;
-  root.add(rifle);
-
-  return { root, muzzleLocal: new THREE.Vector3(0.28, 1.14, 0.55) };
 }
 
 export class EnemyTarget {
@@ -157,7 +25,6 @@ export class EnemyTarget {
 
   private readonly bodyMats: THREE.MeshStandardMaterial[] = [];
   private readonly accentMat: THREE.MeshStandardMaterial;
-  private visorEmissive: THREE.MeshStandardMaterial | null = null;
   private deathT = 0;
   private readonly baseY: number;
   private hitFlash = 0;
@@ -180,6 +47,8 @@ export class EnemyTarget {
   private readonly contactShadow: THREE.Mesh;
   private duckAmount = 0;
   private tookHitRecently = 0;
+  private readonly rig: SoldierRig;
+  private hitKick = 0;
 
   constructor(
     id: number,
@@ -211,80 +80,56 @@ export class EnemyTarget {
       metalness: 0.2,
     });
 
-    if (assets?.ok) {
-      const cloned = cloneSoldier(assets);
-      while (cloned.children.length) this.mesh.add(cloned.children[0]);
-      this.muzzleLocal = new THREE.Vector3(0.25, 1.25, 0.55);
-      this.mesh.traverse((o) => {
-        const m = o as THREE.Mesh;
-        if (!m.isMesh || !m.material) return;
-        const mats = Array.isArray(m.material) ? m.material : [m.material];
-        for (const mat of mats) {
-          const std = mat as THREE.MeshStandardMaterial;
-          if (std.isMeshStandardMaterial) this.bodyMats.push(std);
-        }
-      });
-      this.bodyMats.push(this.accentMat);
-      // Faction stripe beacon (readable at range even on glTF)
-      const stripe = new THREE.Mesh(
-        new THREE.BoxGeometry(0.22, 0.05, 0.04),
-        this.accentMat,
-      );
-      stripe.position.set(0, 1.25, 0.28);
-      this.mesh.add(stripe);
-    } else {
-      // Procedural fallback — improved proportions + silhouette
-      const bodyMat = new THREE.MeshStandardMaterial({
-        color: 0x4a3532,
-        roughness: 0.78,
-        metalness: 0.12,
-        emissive: 0x1a0508,
-        emissiveIntensity: 0.15,
-        envMapIntensity: 0.45,
-      });
-      const armorMat = new THREE.MeshStandardMaterial({
-        color: 0x2a323c,
-        roughness: 0.42,
-        metalness: 0.65,
-        envMapIntensity: 0.85,
-      });
-      const helmetMat = new THREE.MeshStandardMaterial({
-        color: 0x3e4854,
-        roughness: 0.35,
-        metalness: 0.72,
-        envMapIntensity: 0.95,
-      });
-      const skinMat = new THREE.MeshStandardMaterial({
-        color: 0x6a5048,
-        roughness: 0.7,
-        metalness: 0.05,
-        envMapIntensity: 0.35,
-      });
-      const gunMat = new THREE.MeshStandardMaterial({
-        color: 0x14181c,
-        metalness: 0.85,
-        roughness: 0.35,
-        envMapIntensity: 1.0,
-      });
-      this.bodyMats.push(bodyMat, armorMat, helmetMat, skinMat, this.accentMat, gunMat);
-      const built = buildSoldierMesh(bodyMat, armorMat, helmetMat, skinMat, this.accentMat, gunMat);
-      this.muzzleLocal = built.muzzleLocal;
-      while (built.root.children.length) this.mesh.add(built.root.children[0]);
-      this.mesh.traverse((o) => {
-        const m = o as THREE.Mesh;
-        if (!m.isMesh || !m.material) return;
-        const mat = m.material as THREE.MeshStandardMaterial;
-        if (mat.emissive && mat.emissive.getHex() === 0xff2a3a && mat !== this.accentMat) {
-          this.visorEmissive = mat;
-        }
-      });
-    }
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: 0x4a3532,
+      roughness: 0.78,
+      metalness: 0.12,
+      emissive: 0x1a0508,
+      emissiveIntensity: 0.15,
+      envMapIntensity: 0.55,
+    });
+    const armorMat = new THREE.MeshStandardMaterial({
+      color: 0x2a323c,
+      roughness: 0.42,
+      metalness: 0.65,
+      envMapIntensity: 0.85,
+    });
+    const helmetMat = new THREE.MeshStandardMaterial({
+      color: 0x3e4854,
+      roughness: 0.35,
+      metalness: 0.72,
+      envMapIntensity: 0.95,
+    });
+    const skinMat = new THREE.MeshStandardMaterial({
+      color: 0x6a5048,
+      roughness: 0.7,
+      metalness: 0.05,
+      envMapIntensity: 0.35,
+    });
+    const gunMat = new THREE.MeshStandardMaterial({
+      color: 0x14181c,
+      metalness: 0.85,
+      roughness: 0.35,
+      envMapIntensity: 1.0,
+    });
+
+    this.rig = createSoldierRig(assets, {
+      body: bodyMat,
+      armor: armorMat,
+      helmet: helmetMat,
+      skin: skinMat,
+      accent: this.accentMat,
+      gun: gunMat,
+    });
+    this.mesh.add(this.rig.root);
+    this.muzzleLocal = this.rig.muzzleLocal.clone();
+    this.bodyMats.push(...this.rig.materials);
+    if (!this.bodyMats.includes(this.accentMat)) this.bodyMats.push(this.accentMat);
 
     this.muzzleFlash = new THREE.PointLight(0xff9955, 0, 5, 2);
     this.muzzleFlash.position.copy(this.muzzleLocal);
     this.mesh.add(this.muzzleFlash);
 
-    // Soft contact blob under feet
     const shadowMat = new THREE.MeshBasicMaterial({
       color: 0x000000,
       transparent: true,
@@ -298,6 +143,7 @@ export class EnemyTarget {
     this.mesh.add(this.contactShadow);
 
     this.mesh.userData.enemyId = id;
+    this.rig.setPose('idle', true);
   }
 
   setShotCallback(cb: (ev: EnemyShotEvent) => void): void {
@@ -317,9 +163,9 @@ export class EnemyTarget {
     if (!this.alive) return false;
     this.health = Math.max(0, this.health - amount);
     this.hitFlash = 1;
+    this.hitKick = 1;
     this.tookHitRecently = 1.8;
     if (this.state === 'patrol') this.state = 'chase';
-    // Seek cover when chewed up
     if (this.health < this.maxHealth * 0.55 && this.state !== 'cover' && this.coverPoints.length) {
       this.pickCover(this.mesh.position);
       if (this.activeCover) this.state = 'cover';
@@ -328,6 +174,7 @@ export class EnemyTarget {
       this.alive = false;
       this.state = 'dead';
       this.deathT = 0;
+      this.rig.setPose('death', false);
       return true;
     }
     return false;
@@ -336,31 +183,40 @@ export class EnemyTarget {
   update(dt: number, time: number, playerPos: THREE.Vector3, playerAlive: boolean): void {
     this.muzzleFlash.intensity = Math.max(0, this.muzzleFlash.intensity - dt * 40);
     this.tookHitRecently = Math.max(0, this.tookHitRecently - dt);
+    this.hitKick = Math.max(0, this.hitKick - dt * 5);
 
     if (!this.alive) {
       this.deathT += dt;
-      this.mesh.rotation.x = THREE.MathUtils.damp(this.mesh.rotation.x, Math.PI / 2, 6, dt);
-      this.mesh.position.y = THREE.MathUtils.damp(this.mesh.position.y, this.baseY + 0.15, 4, dt);
-      const op = Math.max(0, 1 - this.deathT * 0.5);
+      this.rig.applyDeath(dt, this.deathT);
+      const op = Math.max(0, 1 - this.deathT * 0.55);
       for (const m of this.bodyMats) {
         m.opacity = op;
         m.transparent = true;
+        if (m.emissive) m.emissiveIntensity = Math.min(m.emissiveIntensity, 0.05);
       }
       this.accentMat.emissiveIntensity = 0;
       (this.contactShadow.material as THREE.MeshBasicMaterial).opacity = 0.38 * op;
-      if (this.deathT > 2.5) this.mesh.visible = false;
+      if (this.deathT > 2.4) this.mesh.visible = false;
       return;
     }
 
     if (this.hitFlash > 0) {
-      this.hitFlash = Math.max(0, this.hitFlash - dt * 4);
-      this.accentMat.emissiveIntensity = 1.35 + this.hitFlash * 2.2;
-      if (this.visorEmissive) {
-        this.visorEmissive.emissiveIntensity = 0.9 + this.hitFlash * 2.5;
-      }
+      this.hitFlash = Math.max(0, this.hitFlash - dt * 3.5);
+      this.accentMat.emissiveIntensity = 1.35 + this.hitFlash * 3.2;
       for (const m of this.bodyMats) {
         if (m !== this.accentMat && m.emissive) {
-          m.emissiveIntensity = 0.12 + this.hitFlash * 1.8;
+          m.emissive.setHex(0xff2208);
+          m.emissiveIntensity = 0.12 + this.hitFlash * 2.4;
+        }
+      }
+      // Hit flinch lean
+      this.mesh.rotation.z = Math.sin(this.hitKick * Math.PI) * 0.12 * this.hitKick;
+    } else {
+      this.mesh.rotation.z = THREE.MathUtils.damp(this.mesh.rotation.z, 0, 10, dt);
+      for (const m of this.bodyMats) {
+        if (m !== this.accentMat && m.emissive && m.emissive.getHex() === 0xff2208) {
+          m.emissive.setHex(0x1a0508);
+          m.emissiveIntensity = 0.15;
         }
       }
     }
@@ -381,7 +237,6 @@ export class EnemyTarget {
       this.state = 'patrol';
       this.activeCover = null;
     } else if (this.state === 'chase' && dist <= shootRange) {
-      // Prefer cover if recently hit and a point is near
       if (this.tookHitRecently > 0 && this.coverPoints.length && Math.random() < 0.35) {
         this.pickCover(playerPos);
         if (this.activeCover) this.state = 'cover';
@@ -396,10 +251,9 @@ export class EnemyTarget {
       this.activeCover = null;
     }
 
-    // Duck amount for cover
     const wantDuck = this.state === 'cover' ? 1 : 0;
     this.duckAmount = THREE.MathUtils.damp(this.duckAmount, wantDuck, 8, dt);
-    const duckY = -this.duckAmount * 0.55;
+    const duckY = -this.duckAmount * 0.35;
 
     switch (this.state) {
       case 'patrol':
@@ -436,7 +290,6 @@ export class EnemyTarget {
             this.moveToward(this.activeCover.pos, 3.6, dt);
           } else {
             this.velocity.multiplyScalar(0.7);
-            // Peek-fire while ducked
             this.faceToward(toPlayer, dt * 1.2);
             this.shootCool -= dt;
             if (this.shootCool <= 0 && playerAlive && this.duckAmount > 0.6) {
@@ -450,6 +303,14 @@ export class EnemyTarget {
         break;
     }
 
+    const moving = this.velocity.lengthSq() > 0.35;
+    let pose: SoldierPose = 'idle';
+    if (this.state === 'shoot') pose = 'aim';
+    else if (this.state === 'cover') pose = 'cover';
+    else if (this.state === 'chase' || (this.state === 'patrol' && moving)) pose = moving ? 'walk' : 'idle';
+    this.rig.setPose(pose);
+    this.rig.update(dt, time, moving);
+
     this.mesh.position.y = this.baseY + duckY + Math.sin(time * 1.5 + this.id) * 0.015 * (1 - this.duckAmount);
     this.contactShadow.position.y = 0.02 - duckY;
     (this.contactShadow.material as THREE.MeshBasicMaterial).opacity = 0.32 + this.duckAmount * 0.12;
@@ -461,7 +322,6 @@ export class EnemyTarget {
     for (const c of this.coverPoints) {
       const toCover = c.pos.distanceTo(this.mesh.position);
       const coverToThreat = c.pos.distanceTo(threat);
-      // Prefer nearby cover that sits between self and threat-ish
       const score = toCover * 1.2 + Math.abs(coverToThreat - 6) * 0.4;
       if (toCover < 14 && score < bestScore) {
         bestScore = score;
@@ -473,7 +333,8 @@ export class EnemyTarget {
   }
 
   private fireAtPlayer(_playerPos: THREE.Vector3, dist: number): void {
-    this.muzzleFlash.intensity = 10;
+    this.muzzleFlash.intensity = 12;
+    this.rig.setPose('fire');
     gameAudio.play('enemyShot', {
       x: this.mesh.position.x,
       y: this.mesh.position.y + 1.2,

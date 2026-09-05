@@ -299,6 +299,130 @@ export function buildArena(scene: THREE.Scene, shadowMapSize = 2048): ArenaBuild
     root.add(f);
   }
 
+
+  // Loop 5 — world density: debris, cables, signage, grit (break greybox planes)
+  floorDecal(root, 2.8, 1.4, -5, 4, 0x121014, 0.45, 0.7);
+  floorDecal(root, 1.8, 3.0, 9, -8, 0x1a1008, 0.38, -0.5);
+  floorDecal(root, 5.5, 0.2, 4, 0, 0xff6a3d, 0.22, 0.02);
+  floorDecal(root, 0.9, 0.9, -1, -2, 0x0a0a0c, 0.55);
+  floorDecal(root, 3.5, 1.2, 15, 2, 0x221808, 0.33, 0.25);
+  floorDecal(root, 2.0, 2.0, -12, 8, 0x101208, 0.4);
+
+  // Extra low cover / sandbags / barriers
+  const densCovers: Array<[number, number, number, number, number, number, THREE.Material]> = [
+    [1.6, 1.1, 0.9, -5, 0.55, 3.5, metal],
+    [0.9, 1.5, 1.8, 7.5, 0.75, -1.5, rust],
+    [2.4, 0.85, 1.0, 11.5, 0.42, 9, metal],
+    [1.2, 1.6, 1.2, -14, 0.8, 2, concrete],
+    [1.0, 1.2, 2.4, 3, 0.6, 14, rust],
+    [1.8, 1.0, 1.0, -1, 0.5, -10, metal],
+  ];
+  for (const [w, h, d, x, y, z, mat] of densCovers) {
+    const m = boxMesh(w, h, d, mat, x, y, z);
+    root.add(m);
+    addCollider(colliders, m);
+    contactBlob(root, x, z, Math.max(w, d) * 0.5, 0.35);
+  }
+  coverPoints.push(
+    { pos: new THREE.Vector3(-5, 0, 2.2), facing: new THREE.Vector3(0, 0, -1) },
+    { pos: new THREE.Vector3(7.5, 0, -3.2), facing: new THREE.Vector3(0, 0, 1) },
+    { pos: new THREE.Vector3(11.5, 0, 7.5), facing: new THREE.Vector3(-1, 0, 0) },
+    { pos: new THREE.Vector3(3, 0, 12.5), facing: new THREE.Vector3(0, 0, -1) },
+  );
+
+  // Debris piles (non-colliding clutter, deterministic)
+  const debris: Array<[number, number, number, number, number, number, number, boolean]> = [
+    [-4.5, 1.6, 0.45, 0.12, 0.35, 0.4, 0.08, true],
+    [-4.0, 2.1, 0.35, 0.1, 0.28, -0.3, 0.05, false],
+    [-3.8, 1.5, 0.5, 0.14, 0.4, 1.1, -0.1, true],
+    [8.2, 6.0, 0.4, 0.1, 0.3, 0.6, 0.12, false],
+    [8.7, 6.4, 0.32, 0.09, 0.25, -0.8, -0.05, true],
+    [13.2, -4.2, 0.55, 0.15, 0.4, 0.2, 0.1, false],
+    [12.7, -3.7, 0.38, 0.11, 0.32, 1.4, -0.15, true],
+    [-9.3, 9.2, 0.42, 0.12, 0.3, -0.5, 0.08, false],
+    [1.0, -11.2, 0.36, 0.1, 0.28, 0.9, 0.0, true],
+    [16.2, 1.1, 0.48, 0.13, 0.36, -1.0, 0.1, false],
+  ];
+  for (const [x, z, w, h, d, ry, rz, useRust] of debris) {
+    const chip = boxMesh(w, h, d, useRust ? rust : concrete, x, 0.08, z, true, true);
+    chip.rotation.y = ry;
+    chip.rotation.z = rz;
+    root.add(chip);
+  }
+
+  // Cables / conduits along walls & beams
+  const cableMat = createNeonStrip(0x2a3038, 0.15);
+  for (const [w, h, d, x, y, z, rx, ry] of [
+    [8, 0.04, 0.04, -18, 3.2, -4, 0, 0.1],
+    [0.04, 0.04, 10, -13.2, 2.8, -4, 0, 0],
+    [12, 0.05, 0.05, 2, 4.6, -7.6, 0, 0],
+    [0.05, 0.05, 14, 18, 3.8, -4, 0, 0],
+    [6, 0.04, 0.04, 10, 2.2, 4.4, 0, -0.05],
+  ] as const) {
+    const c = boxMesh(w, h, d, cableMat, x, y, z, false, false);
+    c.rotation.x = rx;
+    c.rotation.y = ry;
+    root.add(c);
+  }
+  // Sagging cable arcs (segmented)
+  for (let i = 0; i < 6; i++) {
+    const t = i / 5;
+    const x = -6 + t * 12;
+    const y = 4.4 - Math.sin(t * Math.PI) * 0.7;
+    root.add(boxMesh(2.2, 0.035, 0.035, rust, x, y, 6.5, false, false));
+  }
+
+  // Signage panels
+  const signA = boxMesh(2.4, 1.1, 0.08, dark, -12.6, 2.4, -4, false, true);
+  root.add(signA);
+  root.add(boxMesh(2.0, 0.15, 0.04, neonOrange, -12.6, 2.75, -3.95, false, false));
+  root.add(boxMesh(1.6, 0.5, 0.03, warn, -12.6, 2.25, -3.94, false, false));
+  const signB = boxMesh(1.8, 0.9, 0.08, metal, 17.5, 2.6, -11.5, false, true);
+  root.add(signB);
+  root.add(boxMesh(1.4, 0.12, 0.04, neonCyan, 17.5, 2.9, -11.45, false, false));
+  const signC = boxMesh(3.0, 0.7, 0.06, dark, 2, 2.6, -7.7, false, true);
+  root.add(signC);
+  root.add(boxMesh(2.6, 0.08, 0.03, neonCyan, 2, 2.85, -7.65, false, false));
+
+  // Wall grit / stain decals (vertical planes)
+  for (const [w, h, x, y, z, ry, col, op] of [
+    [3.5, 2.0, -29.3, 1.8, -8, Math.PI / 2, 0x1a1210, 0.4],
+    [2.5, 1.6, 29.3, 2.0, 5, -Math.PI / 2, 0x121418, 0.35],
+    [4.0, 1.2, -10, 1.5, -29.3, 0, 0x181410, 0.38],
+    [2.2, 2.4, 18, 2.0, -11.55, 0, 0x101820, 0.3],
+  ] as const) {
+    const mat = new THREE.MeshStandardMaterial({
+      color: col,
+      transparent: true,
+      opacity: op,
+      roughness: 0.95,
+      metalness: 0.05,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+    });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+    m.position.set(x, y, z);
+    m.rotation.y = ry;
+    m.renderOrder = 2;
+    root.add(m);
+  }
+
+  // Barrel props
+  for (const [x, z] of [[-7.5, 11], [15, -5.5], [4.5, 13], [-15, -6]] as const) {
+    const barrel = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.35, 0.38, 1.05, 10),
+      rust,
+    );
+    barrel.position.set(x, 0.52, z);
+    barrel.castShadow = true;
+    barrel.receiveShadow = true;
+    root.add(barrel);
+    addCollider(colliders, barrel);
+    contactBlob(root, x, z, 0.5, 0.35);
+  }
+
+
   // --- Lighting punch: darker ambient, hard key, cyan rim, tuned contact shadows ---
   const hemi = new THREE.HemisphereLight(0x6a82a0, 0x0e0c0a, 0.18);
   scene.add(hemi);

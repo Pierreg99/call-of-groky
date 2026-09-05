@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { CombatEffects } from './effects';
 import type { EnemyTarget } from '../enemies/target';
 import { gameAudio } from '../audio/sfx';
+import type { SoldierAssets } from '../enemies/gltfAssets';
 
 export interface WeaponStats {
   name: string;
@@ -121,14 +122,21 @@ function buildRifleViewModel(): {
   const opticBody = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.06, 0.09), bodyMat);
   opticBody.position.set(0, 0.165, -0.08);
   root.add(opticBody);
-  const opticWindow = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.02), glassMat);
-  opticWindow.position.set(0, 0.165, -0.03);
+  const opticWindow = new THREE.Mesh(new THREE.BoxGeometry(0.048, 0.048, 0.022), glassMat);
+  opticWindow.position.set(0, 0.168, -0.028);
   root.add(opticWindow);
-  const reticle = new THREE.Mesh(
-    new THREE.CircleGeometry(0.006, 8),
-    new THREE.MeshBasicMaterial({ color: 0xff3344, transparent: true, opacity: 0.9, depthWrite: false }),
+  // ADS-readable holographic reticle (ring + center)
+  const reticleRing = new THREE.Mesh(
+    new THREE.RingGeometry(0.01, 0.014, 16),
+    new THREE.MeshBasicMaterial({ color: 0xff2233, transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide }),
   );
-  reticle.position.set(0, 0.165, -0.02);
+  reticleRing.position.set(0, 0.168, -0.016);
+  root.add(reticleRing);
+  const reticle = new THREE.Mesh(
+    new THREE.CircleGeometry(0.0035, 10),
+    new THREE.MeshBasicMaterial({ color: 0xff5566, transparent: true, opacity: 1, depthWrite: false }),
+  );
+  reticle.position.set(0, 0.168, -0.015);
   root.add(reticle);
 
   // Stock — collapsible silhouette (not a cube)
@@ -182,15 +190,18 @@ function buildRifleViewModel(): {
 
   // Gloved hands on viewmodel (silhouette polish) — visible from hip FOV
   const gloveMat = new THREE.MeshStandardMaterial({
-    color: 0x1a222a,
-    roughness: 0.88,
-    metalness: 0.08,
-    envMapIntensity: 0.4,
+    color: 0x3a4550,
+    roughness: 0.82,
+    metalness: 0.12,
+    envMapIntensity: 0.55,
+    emissive: 0x0a1014,
+    emissiveIntensity: 0.15,
   });
   // Right hand wrapping pistol grip (screen-right / lower)
-  const palmR = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.1, 0.055), gloveMat);
-  palmR.position.set(0.04, -0.12, 0.09);
-  palmR.rotation.set(0.55, 0.1, 0.15);
+  const palmR = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.12, 0.07), gloveMat);
+  palmR.position.set(0.055, -0.125, 0.1);
+  palmR.rotation.set(0.58, 0.08, 0.18);
+  palmR.userData.keepView = true;
   root.add(palmR);
   for (let i = 0; i < 4; i++) {
     const f = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.055, 0.016), gloveMat);
@@ -203,9 +214,10 @@ function buildRifleViewModel(): {
   thumbR.rotation.set(0.3, 0, -0.8);
   root.add(thumbR);
   // Left support hand on handguard (forward / slightly left)
-  const palmL = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.085, 0.05), gloveMat);
-  palmL.position.set(-0.045, -0.035, -0.28);
-  palmL.rotation.set(0.35, 0.05, -0.2);
+  const palmL = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.1, 0.065), gloveMat);
+  palmL.position.set(-0.055, -0.04, -0.3);
+  palmL.rotation.set(0.4, 0.04, -0.22);
+  palmL.userData.keepView = true;
   root.add(palmL);
   for (let i = 0; i < 4; i++) {
     const f = new THREE.Mesh(new THREE.BoxGeometry(0.013, 0.05, 0.014), gloveMat);
@@ -311,7 +323,10 @@ export class Rifle {
   private wasAds = false;
   private idlePhase = 0;
 
-  constructor(camera: THREE.PerspectiveCamera, effects: CombatEffects) {
+  /** true when CC0 GLB rifle was scaled into the viewmodel (else procedural intentional). */
+  usedGltfRifle = false;
+
+  constructor(camera: THREE.PerspectiveCamera, effects: CombatEffects, assets: SoldierAssets | null = null) {
     this.camera = camera;
     this.effects = effects;
     this.mag = this.stats.magSize;
@@ -324,6 +339,14 @@ export class Rifle {
     this.flash = built.flash;
     this.flashCore = built.flashCore;
     this.flashLight = built.flashLight;
+
+    // Viewmodel: procedural intentional — gloved hands + readable ADS optic.
+    // World enemies use the CC0 GLB rifle on the hierarchical soldier socket;
+    // FPS view keeps authored proportions (GLB author orientation is world-prop, not FPS-rigged).
+    this.usedGltfRifle = false;
+    if (assets?.ok) {
+      console.info('[viewmodel] procedural intentional (hands/ADS); world GLB rifle on enemies');
+    }
 
     camera.add(this.viewModel);
   }
@@ -503,9 +526,9 @@ export class Rifle {
       const hipX = 0.3;
       const adsX = 0.0;
       const hipY = -0.3;
-      const adsY = -0.2;
+      const adsY = -0.168;
       const hipZ = -0.58;
-      const adsZ = -0.45;
+      const adsZ = -0.38;
       this.viewModel.position.set(
         THREE.MathUtils.lerp(hipX, adsX, this.adsBlend) + this.bob.x * 1.55 * bobScale + breathX,
         THREE.MathUtils.lerp(hipY, adsY, this.adsBlend) + this.bob.y * bobScale + breathY,

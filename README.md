@@ -1,6 +1,6 @@
 # Call of Groky
 
-Cinematic **Three.js** FPS greybox — **Loop 4** HDRI + CC0 glTF soldier polish.
+Cinematic **Three.js** FPS greybox — **Loop 5** hierarchical combat poses + viewmodel GLB rifle scale-pass.
 
 Not a Call of Duty clone. Premium-feeling WebGL arena shooter (Vite + TypeScript + Three.js r170+). Browser Three.js pushed harder; still **not** an IW-engine peer.
 
@@ -41,15 +41,15 @@ Auto-detected from CPU cores / `deviceMemory`. Canvas MSAA off; AA is post.
 
 Vignette scales with preset. `prefers-reduced-motion: reduce` dampens recoil/bob, chromatic, and CSS vignette.
 
-## Loop 4 features
+## Loop 5 features
 
-- **HDRI:** Poly Haven Empty Warehouse 01 (CC0) via RGBELoader + PMREM; stronger indirect bounce
-- **Soldiers:** CC0 glTF male + assault rifle (~43KB); procedural fallback + faction accents
-- **Viewmodel:** procedural rifle with gloved hands; breath/walk bob
-- **Killcam-lite:** eliminate banner + timescale/FOV punch; stylized blood blotches
-- **Audio:** richer procedural WebAudio layers
-- **FPS:** on-screen counter toggle (F3)
-- **Fog:** engagement-tuned Exp2 (readable mid-fight)
+- **Soldier poses:** Hierarchical procedural body + CC0 GLB rifle — idle / walk / aim / fire / cover / death (not T-pose)
+- **Viewmodel:** Procedural intentional — gloved hands + readable ADS optic; world enemies use CC0 GLB rifle
+- **World density:** Extra cover, debris, cables, signage, grit decals
+- **Combat juice:** Hit flinch, tracer/impact polish, ragdoll-lite death
+- **HDRI:** Poly Haven Empty Warehouse 01 (CC0) via RGBELoader + PMREM
+- **Killcam-lite / audio / FPS counter** retained from Loop 4
+- **Fog:** engagement-tuned Exp2
 
 ## Stack
 
