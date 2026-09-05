@@ -26,3 +26,11 @@ User 2026-09-05 **"All shader allowed / Approved all"** — **Bloom / SSAO / Chr
 ## Play
 
 https://pierreg99.github.io/call-of-groky/
+
+## Docs
+
+- Changelog: [CHANGELOG.md](./CHANGELOG.md)
+- Progress: [docs/PROGRESS.md](./docs/PROGRESS.md)
+- Roadmap: [docs/ROADMAP.md](./docs/ROADMAP.md)
+- Plan: [docs/PLAN.md](./docs/PLAN.md)
+- Gallery: [docs/gallery.md](./docs/gallery.md)
