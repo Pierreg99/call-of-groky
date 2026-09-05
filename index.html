@@ -18,8 +18,23 @@
             <div id="health-bar"><div id="health-fill"></div></div>
             <span id="health-text">100</span>
           </div>
+          <div id="objective">
+            <div class="obj-bar"><div id="objective-fill"></div></div>
+            <span class="obj-text">SECURE TOWER · ELIMINATE 0/10</span>
+          </div>
+        </div>
+        <div id="compass">
+          <div id="compass-ring">
+            <div id="compass-needle"></div>
+            <div id="compass-n">N</div>
+          </div>
+          <div id="compass-label">OBJ</div>
         </div>
         <div id="bottom-bar">
+          <div id="weapon-slots">
+            <div id="slot-1" class="wep-slot active"><span class="n">1</span><span class="nm">G-16</span></div>
+            <div id="slot-2" class="wep-slot"><span class="n">2</span><span class="nm">G-9</span></div>
+          </div>
           <div id="ammo">
             <span id="ammo-mag">30</span>
             <span class="sep">/</span>
@@ -28,6 +43,7 @@
           </div>
         </div>
         <div id="kill-feed"></div>
+        <div id="pickup-toast" aria-hidden="true"></div>
         <div id="killcam" aria-hidden="true">
           <div class="kc-label">ELIMINATED</div>
           <div id="killcam-name">TARGET</div>
@@ -36,8 +52,8 @@
         <div id="overlay" class="visible">
           <div class="panel">
             <h1>CALL OF <span>GROKY</span></h1>
-            <p class="tag">LOOP 4 — HDRI · GLTF SOLDIER · KILLCAM</p>
-            <p class="hint">Click to lock · WASD · Shift sprint · Ctrl crouch · Space jump · LMB fire · RMB ADS · R reload · F3 FPS</p>
+            <p class="tag">LOOP 6 — DUAL WEAPONS · COMPASS · CONTROL TOWER</p>
+            <p class="hint">Click to lock · WASD · Shift sprint · Ctrl crouch · Space jump · LMB fire · RMB ADS · R reload · 1/2 or scroll switch · F3 FPS</p>
             <button id="start-btn" type="button">DEPLOY</button>
           </div>
         </div>

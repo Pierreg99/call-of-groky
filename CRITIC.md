@@ -1,6 +1,6 @@
-# CryoCritic — Loop 5 visual self-critique
+# CryoCritic — Loop 6 visual self-critique
 
-**Verdict: FAIL vs modern Call of Duty.** Expected. Browser Three.js greybox with hierarchical combat poses on CC0 soldier + HDRI; still not IW/Treyarch production.
+**Verdict: FAIL vs modern Call of Duty.** Expected. Browser Three.js greybox with dual weapons, compass objective, and a denser control-tower landmark; still not IW/Treyarch production.
 
 Artifact-Gate (screenshots + green build + Pages) is the deliverable bar. **Do not claim CoD PASS.**
 
@@ -20,18 +20,18 @@ Artifact-Gate (screenshots + green build + Pages) is the deliverable bar. **Do n
 
 | Context | Approx FPS | Approx 1% low | Notes |
 |---------|------------|---------------|-------|
-| Desktop Low (1440×900, `quality=low`) | **~20–24** (headless noise; virtual-time dumps unusable) | mid-teens | **SwiftShader only** — no `/dev/dri` |
-| Mobile Low (390×844, `quality=low`) | **~18–22** | ~18–20 | SwiftShader |
+| Desktop Low (1440×900, `quality=low`) | **~18–23** (headless noise; virtual-time dumps unusable) | mid-teens | **SwiftShader only** — no `/dev/dri` |
+| Mobile Low (390×844, `quality=low`) | **~16–21** | ~16–19 | SwiftShader; extra HUD/compass cost small |
 
 Expect materially higher numbers on a real discrete GPU. Low preset keeps ShadowMap **≤512**, no bloom/SSAO.
 
-## What improved (Loop 4 → Loop 5)
+## What improved (Loop 5 → Loop 6)
 
-- **Combat poses (kill T-pose):** CC0 slim GLB has **no skin weights**. Loop 5 uses a hierarchical procedural body (`soldierRig.ts`) with keyframed **idle / walk / aim / fire / cover / death** + walk cycle and ragdoll-lite death tumble (fall + fade). CC0 **assault rifle** attaches to the weapon socket (world-matched). Honest: not GPU-skinned MetaHuman clips.
-- **Viewmodel:** **Procedural intentional** — gloved hands + readable ADS holo optic, proportions matched to ~0.75m world rifle length. CC0 GLB rifle stays on **enemy** weapon sockets (author mesh is world-prop oriented, not FPS-rigged).
-- **ADS optic:** Larger holo window + ring/center reticle; ADS pose pulls optic closer to eye.
-- **World density:** Extra cover, barrels, deterministic debris piles, wall/floor grit, cables/conduits, warning signage — breaks flat greybox planes.
-- **Combat juice:** Stronger hit emissive + flinch lean; thicker tracer + hot core; brighter impact flash/sparks; denser stylized blood blotches; death ragdoll-lite via rig.
+- **Second weapon:** **GROKY-9 SMG** — distinct compact viewmodel, higher RPM (~900), wider hip spread, snappier recoil recovery vs GROKY-16 rifle. Switch via **1/2** or **mouse wheel** with raise-on-switch.
+- **Recoil / ADS / fire-rate polish:** Per-weapon `recoilPitch` / `recoilYaw` / `recoilAdsMul` / `kickAmount` / hip+ADS poses; rifle tighter ADS, SMG more lateral chatter.
+- **Ammo pickups:** Glowing crates in courtyard + tower; walk-over adds reserve (cap 2× base).
+- **Compass + objective:** Top-center compass needle toward control tower; HUD objective **SECURE TOWER · ELIMINATE N/10** with progress bar.
+- **Landmark room:** **Control tower** — stairs to upper deck, consoles/monitors, window frames, shelf aisle, mast, dedicated fill lights — denser screenshot composition than flat courtyard.
 - **Shadows:** Low still **512**; Med 1536; High 2048.
 
 ## What still fails vs modern CoD (harsh)
@@ -40,12 +40,13 @@ Expect materially higher numbers on a real discrete GPU. Low preset keeps Shadow
 2. HDRI reflections only; no lightmaps, probes, or volumetrics; fog still Exp2.
 3. Materials mostly procedural noise / simple PBR; no AAA trim sheets.
 4. Post: not TAAU / weapon DOF / local exposure.
-5. Viewmodel hybrid (GLB rifle + procedural hands/optic); no inspect / attachment swap.
+5. Viewmodel hybrid procedural; no inspect / attachment swap / shared ammo pool UX polish.
 6. AI: static cover anchors; no navmesh / suppression / flanking.
-7. World denser but still greybox vs CoD multiplayer art.
-8. Audio: richer synth, still not recorded Foley packs.
+7. World denser (tower) but still greybox vs CoD multiplayer art.
+8. Audio: richer synth, still not recorded Foley packs; no unique SMG sample.
 9. Perf: SSAO costly on high; no occlusion culling / GPU particles; agent FPS is SwiftShader-only.
-10. Juice: killcam-lite + ragdoll-lite ≠ full killcam / PhysX ragdoll.
+10. Juice: killcam-lite + ragdoll-lite ≠ full killcam / PhysX ragdoll; objective is kill-count only (no extract / defend timer).
+11. Compass is 2D needle, not a true mini-map with fog-of-war / teammate pings.
 
 ## Gate artifacts
 
@@ -56,4 +57,4 @@ Expect materially higher numbers on a real discrete GPU. Low preset keeps Shadow
 
 ## Next loops
 
-- Real skinned GLB (or embed weights) with aim/walk clips; navgrid; light probes / AO bake; streamed CC0 Foley if size budget allows
+- Real skinned GLB (or embed weights) with aim/walk clips; navgrid; light probes / AO bake; streamed CC0 Foley if size budget allows; true mini-map splat; weapon inspect

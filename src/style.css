@@ -117,8 +117,8 @@ html, body, #app {
   align-items: flex-end;
 }
 
-#top-bar { top: 0; }
-#bottom-bar { bottom: 0; justify-content: flex-end; }
+#top-bar { top: 0; justify-content: space-between; align-items: flex-start; gap: 16px; }
+#bottom-bar { bottom: 0; justify-content: space-between; align-items: flex-end; }
 
 #health-wrap {
   display: flex;
@@ -409,3 +409,160 @@ html.capture-mode #overlay { display: none !important; }
 }
 html.capture-mode #fps-counter { display: none !important; }
 html.capture-mode #killcam { display: none !important; }
+
+
+/* Loop 6 — compass / objective / weapon slots / pickup toast */
+#compass {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  z-index: 12;
+  pointer-events: none;
+}
+#compass-ring {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 1px solid rgba(92, 225, 255, 0.45);
+  background: radial-gradient(circle at 50% 45%, rgba(20, 30, 40, 0.55), rgba(0, 0, 0, 0.7));
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.45), inset 0 0 12px rgba(92, 225, 255, 0.08);
+}
+#compass-needle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 22px solid #5ce1ff;
+  transform: translate(-50%, -100%) rotate(0deg);
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 0 4px rgba(92, 225, 255, 0.7));
+}
+#compass-n {
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: rgba(180, 200, 220, 0.55);
+}
+#compass-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+  text-shadow: 0 0 8px rgba(92, 225, 255, 0.4);
+}
+
+#objective {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 8px 12px;
+  background: linear-gradient(270deg, rgba(0,0,0,0.55), rgba(0,0,0,0.12));
+  border-right: 2px solid var(--accent);
+  backdrop-filter: blur(4px);
+  max-width: 280px;
+}
+#objective .obj-text {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--hud);
+  text-transform: uppercase;
+  text-align: right;
+}
+#objective .obj-bar {
+  width: 180px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+#objective-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #1a4a6b, var(--accent));
+  box-shadow: 0 0 10px rgba(92, 225, 255, 0.4);
+  transition: width 180ms ease-out;
+}
+#objective.done .obj-text { color: var(--ok); }
+#objective.done #objective-fill {
+  background: linear-gradient(90deg, #1a6b4a, var(--ok));
+}
+
+#weapon-slots {
+  display: flex;
+  gap: 8px;
+  padding: 6px;
+}
+.wep-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 48px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  opacity: 0.55;
+  transition: opacity 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+.wep-slot.active {
+  opacity: 1;
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(92, 225, 255, 0.25);
+}
+.wep-slot .n {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--hud-dim);
+  letter-spacing: 0.1em;
+}
+.wep-slot .nm {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--hud);
+  letter-spacing: 0.06em;
+}
+.wep-slot.active .nm { color: var(--accent); }
+
+#pickup-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 110px;
+  transform: translateX(-50%) translateY(8px);
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(92, 225, 255, 0.35);
+  padding: 8px 16px;
+  opacity: 0;
+  transition: opacity 120ms ease, transform 120ms ease;
+  pointer-events: none;
+  z-index: 18;
+}
+#pickup-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+@media (max-width: 640px) {
+  #objective .obj-bar { width: 120px; }
+  #objective .obj-text { font-size: 9px; }
+  #compass-ring { width: 44px; height: 44px; }
+  #weapon-slots { padding: 4px; }
+}

@@ -1,6 +1,6 @@
 # Call of Groky
 
-Cinematic **Three.js** FPS greybox — **Loop 5** hierarchical combat poses + viewmodel GLB rifle scale-pass.
+Cinematic **Three.js** FPS greybox — **Loop 6** dual weapons (rifle + SMG), compass objective, control-tower landmark.
 
 Not a Call of Duty clone. Premium-feeling WebGL arena shooter (Vite + TypeScript + Three.js r170+). Browser Three.js pushed harder; still **not** an IW-engine peer.
 
@@ -26,6 +26,8 @@ Production: Vite build to `dist/`, then Vite preview.
 | LMB | Fire |
 | RMB | ADS (FOV lerp) |
 | R | Reload |
+| 1 / 2 | Switch rifle / SMG |
+| Mouse wheel | Cycle weapons |
 | F3 / ` | Toggle FPS counter |
 | Esc | Unlock pointer |
 
@@ -41,14 +43,13 @@ Auto-detected from CPU cores / `deviceMemory`. Canvas MSAA off; AA is post.
 
 Vignette scales with preset. `prefers-reduced-motion: reduce` dampens recoil/bob, chromatic, and CSS vignette.
 
-## Loop 5 features
+## Loop 6 features
 
-- **Soldier poses:** Hierarchical procedural body + CC0 GLB rifle — idle / walk / aim / fire / cover / death (not T-pose)
-- **Viewmodel:** Procedural intentional — gloved hands + readable ADS optic; world enemies use CC0 GLB rifle
-- **World density:** Extra cover, debris, cables, signage, grit decals
-- **Combat juice:** Hit flinch, tracer/impact polish, ragdoll-lite death
-- **HDRI:** Poly Haven Empty Warehouse 01 (CC0) via RGBELoader + PMREM
-- **Killcam-lite / audio / FPS counter** retained from Loop 4
+- **Dual weapons:** GROKY-16 rifle + GROKY-9 SMG — distinct RPM/recoil/ADS/spread; switch 1/2 or scroll
+- **Ammo pickups** + per-weapon reserve
+- **Compass + objective:** needle to control tower; survive/clear **10 eliminations**
+- **Control tower landmark:** stairs, deck, consoles, aisle shelves, mast (screenshot composition)
+- **Soldier poses / viewmodel / HDRI / killcam-lite** retained from Loops 4–5
 - **Fog:** engagement-tuned Exp2
 
 ## Stack
