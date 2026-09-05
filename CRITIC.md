@@ -4,7 +4,14 @@
 
 Artifact-Gate (screenshots + green build + Pages) is the deliverable bar. **Do not claim CoD PASS.**
 
-**User override content loops** — Critic recommended stop; user instructed continue. See [`RELEASE.md`](./RELEASE.md): **Ship-Perf unverified** (SwiftShader-only on agent box).
+**User override content loops** — Critic recommended stop; user instructed continue.
+
+### Ship-Gate / S5 (User Accept)
+
+- **Ship-Perf:** **Accepted unverified (SwiftShader-only)** — User Accept 2026-09-05 (Europe/Berlin). See [`RELEASE.md`](./RELEASE.md).
+- **Browser-AAA Ship-Gate:** **GO** via User Accept (S5 documentation path) — 2026-09-05 (Europe/Berlin).
+- **Artifact-Gate:** **PASS** (Loops 1–8 on main).
+- **CoD PASS:** still **No**.
 
 ## Preset matrix (PR / Shadow / PostFX)
 
@@ -18,7 +25,7 @@ Runtime settings (Esc / gear) switch presets live; Low still **ShadowMap ≤512*
 
 ### Perf note (best-effort, Low preset)
 
-**No `/dev/dri` on the agent box** — captures use Chrome headless + **SwiftShader** (`--use-angle=swiftshader`). Not a discrete-GPU frame-time capture. **Ship-Perf: unverified.**
+**No `/dev/dri` on the agent box** — captures use Chrome headless + **SwiftShader** (`--use-angle=swiftshader`). Not a discrete-GPU frame-time capture. **Ship-Perf: Accepted unverified (SwiftShader-only)** — User Accept 2026-09-05 (Europe/Berlin).
 
 | Context | Approx FPS | Approx 1% low | Notes |
 |---------|------------|---------------|-------|
@@ -54,7 +61,7 @@ Expect materially higher numbers on a real discrete GPU. Low preset keeps Shadow
 
 - Screenshots: `docs/shots/01-mid-greybox.png`, `02-combat.png`, `03-hud-closeup.png`, `04-hud-mobile.png`
 - Credits: `docs/credits/ATTRIBUTION.md`
-- Release: `RELEASE.md` (Ship-Perf unverified)
+- Release: `RELEASE.md` (Ship-Perf Accepted unverified; Browser-AAA Ship-Gate GO via User Accept S5)
 - Pages: https://pierreg99.github.io/call-of-groky/
 - Production `tsc` + Vite build must stay green
 

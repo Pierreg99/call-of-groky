@@ -4,9 +4,10 @@
 
 | Gate | Status | Notes |
 |------|--------|-------|
-| Artifact-Gate (screenshots + green build + Pages) | **Continue looping** | **User override content loops** (Critic stop overridden) |
+| Artifact-Gate (screenshots + green build + Pages) | **PASS** (Loops 1–8 on main) | Screenshots + green build + Pages |
 | CoD visual PASS | **No** | Browser Three.js greybox — not IW/Treyarch parity |
-| Ship-Perf | **Unverified** | Agent box has **no `/dev/dri`**; FPS / frame-time notes are **SwiftShader-only** (`--use-angle=swiftshader`). Do not treat agent numbers as discrete-GPU Ship-Perf evidence. |
+| Ship-Perf | **Accepted unverified (SwiftShader-only)** | User Accept 2026-09-05 (Europe/Berlin). Agent box has **no `/dev/dri`**; FPS / frame-time notes remain **SwiftShader-only** (`--use-angle=swiftshader`). Not discrete-GPU Ship-Perf evidence. |
+| Browser-AAA Ship-Gate | **GO** | via User Accept (S5 documentation path) — 2026-09-05 (Europe/Berlin) |
 
 Low quality preset keeps **ShadowMap 512**. Expect materially higher FPS on a real GPU.
 
