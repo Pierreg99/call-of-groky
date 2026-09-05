@@ -10,8 +10,11 @@ import {
 } from './materials';
 import type { FloorPad } from '../player/fpsController';
 import type { CoverPoint } from '../enemies/target';
-import { boxMesh, addCollider, addFloorPad, contactBlob, floorDecal } from './pieces/helpers';
+import { boxMesh, addCollider, contactBlob, floorDecal } from './pieces/helpers';
 import { buildControlTower } from './pieces/tower';
+import { buildCoverClusters } from './pieces/cover';
+import { buildRampPlatform } from './pieces/ramp';
+import { buildWindowWall } from './pieces/windowWall';
 
 export interface AmmoPickup {
   mesh: THREE.Object3D;
@@ -132,89 +135,33 @@ export function buildArena(scene: THREE.Scene, shadowMapSize = 2048): ArenaBuild
   root.add(boxMesh(0.08, 2.4, 0.08, neonOrange, -13, 1.2, -5.2, false, false));
   root.add(boxMesh(0.08, 2.4, 0.08, neonOrange, -13, 1.2, -2.8, false, false));
 
-  // Cover crates — taller duckable props + nav cover points on safe side
-  const covers: Array<[number, number, number, number, number, number, THREE.Material]> = [
-    [2.4, 1.4, 1.2, -2, 0.7, 2, metal],
-    [1.2, 1.8, 2.2, 3, 0.9, -3, rust],
-    [2.8, 1.2, 1.4, 14, 0.6, -2, metal],
-    [1.6, 2.2, 1.6, 17, 1.1, -6, rust],
-    [3.2, 1.0, 1.4, -16, 0.5, -4, metal],
-    [1.3, 1.3, 2.6, -8, 0.65, 10, concrete],
-    [2.0, 1.6, 2.0, 8, 0.8, 12, rust],
-    [4.0, 0.9, 1.2, 0, 0.45, -14, metal],
-    // Loop 3 extra cover density
-    [1.8, 1.5, 1.1, 5.5, 0.75, 7.5, metal],
-    [1.4, 1.7, 1.4, -3.5, 0.85, 8.5, rust],
-    [2.2, 1.3, 1.0, 10, 0.65, 5, metal],
-    [1.5, 1.9, 1.2, -10, 0.95, 5, concrete],
-    [1.1, 1.4, 2.0, 1.5, 0.7, -5, rust],
-  ];
-  for (const [w, h, d, x, y, z, mat] of covers) {
-    const m = boxMesh(w, h, d, mat, x, y, z);
-    root.add(m);
-    addCollider(colliders, m);
-    contactBlob(root, x, z, Math.max(w, d) * 0.55, 0.4);
-    // Stacked small crate on some covers
-    if (h >= 1.4 && w >= 1.4) {
-      const top = boxMesh(w * 0.55, 0.55, d * 0.55, rust, x + 0.15, y + h / 2 + 0.28, z - 0.1);
-      root.add(top);
-      addCollider(colliders, top);
-    }
-  }
+  // Modular cover / crate clusters + barrels + AI anchors
+  buildCoverClusters({
+    root,
+    colliders,
+    coverPoints,
+    metal,
+    rust,
+    concrete,
+  });
 
-  // Cover nav points — stand just behind crate toward courtyard center
-  const coverDefs: Array<[number, number, number, number]> = [
-    [-2, 3.2, 0, 1],
-    [3, -4.5, 0, -1],
-    [5.5, 6.2, 0, -1],
-    [-3.5, 7.2, 0, -1],
-    [10, 3.7, 0, -1],
-    [-10, 3.7, 0, -1],
-    [8, 10.5, 0, -1],
-    [-8, 8.5, 0, -1],
-    [14, -3.5, -1, 0],
-    [1.5, -6.5, 0, 1],
-    [0, -12.5, 0, 1],
-    [-16, -2.5, 1, 0],
-  ];
-  for (const [x, z, fx, fz] of coverDefs) {
-    coverPoints.push({
-      pos: new THREE.Vector3(x, 0, z),
-      facing: new THREE.Vector3(fx, 0, fz).normalize(),
-    });
-  }
+  // Modular raised platform + approach ramp
+  buildRampPlatform({
+    root,
+    colliders,
+    floors,
+    concrete,
+    metal,
+  });
 
-  const platform = boxMesh(8, 0.4, 6, concrete, -4, 1.4, 18);
-  root.add(platform);
-  addCollider(colliders, platform);
-  addFloorPad(floors, platform);
-  contactBlob(root, -4, 18, 4.2, 0.25);
+  // Modular mid courtyard window-wall
+  buildWindowWall({
+    root,
+    colliders,
+    concrete,
+    neonCyan,
+  });
 
-  const ramp = boxMesh(3, 0.35, 5, metal, -4, 0.7, 13.5);
-  ramp.rotation.x = -0.35;
-  root.add(ramp);
-  for (let i = 0; i < 5; i++) {
-    const t = i / 4;
-    const z = 13.5 - 2.2 + t * 4.4;
-    const y = 0.35 + t * 1.05;
-    floors.push({
-      minX: -5.4,
-      maxX: -2.6,
-      minZ: z - 0.55,
-      maxZ: z + 0.55,
-      topY: y,
-    });
-  }
-
-  const midWall = boxMesh(12, 2.2, 0.5, concrete, 2, 1.1, -8);
-  root.add(midWall);
-  addCollider(colliders, midWall);
-  contactBlob(root, 2, -8, 6, 0.3);
-  const midGapL = boxMesh(3, 2.2, 0.5, concrete, -8, 1.1, -8);
-  root.add(midGapL);
-  addCollider(colliders, midGapL);
-
-  root.add(boxMesh(11.5, 0.05, 0.08, neonCyan, 2, 2.25, -8, false, false));
 
   for (let i = -2; i <= 2; i++) {
     const beam = boxMesh(0.35, 0.35, 24, metal, i * 5, 5.2, 0, false, true);
@@ -242,28 +189,6 @@ export function buildArena(scene: THREE.Scene, shadowMapSize = 2048): ArenaBuild
   floorDecal(root, 0.9, 0.9, -1, -2, 0x0a0a0c, 0.55);
   floorDecal(root, 3.5, 1.2, 15, 2, 0x221808, 0.33, 0.25);
   floorDecal(root, 2.0, 2.0, -12, 8, 0x101208, 0.4);
-
-  // Extra low cover / sandbags / barriers
-  const densCovers: Array<[number, number, number, number, number, number, THREE.Material]> = [
-    [1.6, 1.1, 0.9, -5, 0.55, 3.5, metal],
-    [0.9, 1.5, 1.8, 7.5, 0.75, -1.5, rust],
-    [2.4, 0.85, 1.0, 11.5, 0.42, 9, metal],
-    [1.2, 1.6, 1.2, -14, 0.8, 2, concrete],
-    [1.0, 1.2, 2.4, 3, 0.6, 14, rust],
-    [1.8, 1.0, 1.0, -1, 0.5, -10, metal],
-  ];
-  for (const [w, h, d, x, y, z, mat] of densCovers) {
-    const m = boxMesh(w, h, d, mat, x, y, z);
-    root.add(m);
-    addCollider(colliders, m);
-    contactBlob(root, x, z, Math.max(w, d) * 0.5, 0.35);
-  }
-  coverPoints.push(
-    { pos: new THREE.Vector3(-5, 0, 2.2), facing: new THREE.Vector3(0, 0, -1) },
-    { pos: new THREE.Vector3(7.5, 0, -3.2), facing: new THREE.Vector3(0, 0, 1) },
-    { pos: new THREE.Vector3(11.5, 0, 7.5), facing: new THREE.Vector3(-1, 0, 0) },
-    { pos: new THREE.Vector3(3, 0, 12.5), facing: new THREE.Vector3(0, 0, -1) },
-  );
 
   // Debris piles (non-colliding clutter, deterministic)
   const debris: Array<[number, number, number, number, number, number, number, boolean]> = [
@@ -342,22 +267,6 @@ export function buildArena(scene: THREE.Scene, shadowMapSize = 2048): ArenaBuild
     m.renderOrder = 2;
     root.add(m);
   }
-
-  // Barrel props
-  for (const [x, z] of [[-7.5, 11], [15, -5.5], [4.5, 13], [-15, -6]] as const) {
-    const barrel = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.35, 0.38, 1.05, 10),
-      rust,
-    );
-    barrel.position.set(x, 0.52, z);
-    barrel.castShadow = true;
-    barrel.receiveShadow = true;
-    root.add(barrel);
-    addCollider(colliders, barrel);
-    contactBlob(root, x, z, 0.5, 0.35);
-  }
-
-
 
   // Loop 6+ — modular control tower piece
   const towerCenter = buildControlTower({
