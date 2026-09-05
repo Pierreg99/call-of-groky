@@ -30,6 +30,12 @@ export interface ArenaBuild {
   towerCenter: THREE.Vector3;
 }
 
+function ensureUv2(geo: THREE.BufferGeometry): void {
+  if (!geo.getAttribute('uv2') && geo.getAttribute('uv')) {
+    geo.setAttribute('uv2', geo.getAttribute('uv').clone());
+  }
+}
+
 function boxMesh(
   w: number,
   h: number,
@@ -41,7 +47,9 @@ function boxMesh(
   cast = true,
   receive = true,
 ): THREE.Mesh {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  const geo = new THREE.BoxGeometry(w, h, d);
+  ensureUv2(geo);
+  const m = new THREE.Mesh(geo, mat);
   m.position.set(x, y, z);
   m.castShadow = cast;
   m.receiveShadow = receive;

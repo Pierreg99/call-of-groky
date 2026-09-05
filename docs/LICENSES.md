@@ -12,6 +12,13 @@ Asset-level detail also lives in [credits/ATTRIBUTION.md](./credits/ATTRIBUTION.
 - File: public/hdri/empty_warehouse_01_1k.hdr
 - Use: IBL via RGBELoader + PMREMGenerator
 
+## Poly Haven — PBR textures (1K JPG)
+
+- concrete_floor_worn_001, concrete_wall_007, metal_plate, rusty_metal_02
+- License: CC0 1.0 — see [credits/ATTRIBUTION.md](./credits/ATTRIBUTION.md)
+- Files: public/textures/*
+- Use: arena MeshStandardMaterial maps (diffuse / normal / roughness / AO / metalness)
+
 ## OpenGameArt — Low Poly Soldier with weapons
 
 - Source: https://opengameart.org/content/low-poly-soldier-with-weapons

@@ -72,17 +72,18 @@ export function loadSoldierAssets(): Promise<SoldierAssets> {
           const std = (mat as THREE.MeshStandardMaterial).clone() as THREE.MeshStandardMaterial;
           const name = (std.name || '').toLowerCase();
           if (name.includes('gear') || name.includes('rifle') || name.includes('weapon')) {
-            std.color.setHex(0x3a4550);
-            std.metalness = 0.55;
-            std.roughness = 0.45;
-            std.envMapIntensity = 0.95;
+            std.color.setHex(0x4a5562);
+            std.metalness = 0.72;
+            std.roughness = 0.38;
+            std.envMapIntensity = 1.2;
           } else {
-            std.color.setHex(0x5a4038);
-            std.metalness = 0.12;
-            std.roughness = 0.72;
-            std.envMapIntensity = 0.55;
-            std.emissive = new THREE.Color(0x1a0508);
-            std.emissiveIntensity = 0.12;
+            // Fabric / skin tone with subtle sheen from warehouse IBL
+            std.color.setHex(0x6a4e42);
+            std.metalness = 0.08;
+            std.roughness = 0.68;
+            std.envMapIntensity = 0.7;
+            std.emissive = new THREE.Color(0x140608);
+            std.emissiveIntensity = 0.1;
           }
           return std;
         };

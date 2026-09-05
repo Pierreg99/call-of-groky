@@ -89,7 +89,156 @@ function makeNormalMap(size: number, scale = 1.6): THREE.DataTexture {
   return tex;
 }
 
+export interface PbrMaps {
+  map?: THREE.Texture;
+  normalMap?: THREE.Texture;
+  roughnessMap?: THREE.Texture;
+  aoMap?: THREE.Texture;
+  metalnessMap?: THREE.Texture;
+}
+
+export interface WorldPbrBundle {
+  floor: PbrMaps;
+  wall: PbrMaps;
+  metal: PbrMaps;
+  rust: PbrMaps;
+  ok: boolean;
+}
+
+let bundle: WorldPbrBundle | null = null;
+
+function configureMap(
+  tex: THREE.Texture,
+  repeat: [number, number],
+  colorSpace: THREE.ColorSpace,
+): THREE.Texture {
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeat[0], repeat[1]);
+  tex.anisotropy = 8;
+  tex.colorSpace = colorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+async function loadJpg(
+  loader: THREE.TextureLoader,
+  url: string,
+  repeat: [number, number],
+  colorSpace: THREE.ColorSpace,
+): Promise<THREE.Texture | undefined> {
+  try {
+    const tex = await Promise.race([
+      loader.loadAsync(url),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('tex timeout')), 6000)),
+    ]);
+    return configureMap(tex, repeat, colorSpace);
+  } catch {
+    return undefined;
+  }
+}
+
+/** Preload Poly Haven CC0 1K PBR maps (falls back to procedural if missing). */
+export async function loadWorldPbrTextures(): Promise<WorldPbrBundle> {
+  if (bundle) return bundle;
+  const base = import.meta.env.BASE_URL || '/';
+  const loader = new THREE.TextureLoader();
+  const srgb = THREE.SRGBColorSpace;
+  const linear = THREE.NoColorSpace;
+
+  const floorRep: [number, number] = [8, 8];
+  const wallRep: [number, number] = [3, 2];
+  const metalRep: [number, number] = [2, 2];
+  const rustRep: [number, number] = [2, 2];
+
+  const [
+    floorDiff,
+    floorNor,
+    floorRough,
+    floorAo,
+    wallDiff,
+    wallNor,
+    wallRough,
+    wallAo,
+    metalDiff,
+    metalNor,
+    metalRough,
+    metalAo,
+    metalMetal,
+    rustDiff,
+    rustNor,
+    rustRough,
+    rustAo,
+  ] = await Promise.all([
+    loadJpg(loader, `${base}textures/concrete_floor/concrete_floor_worn_001_diff_1k.jpg`, floorRep, srgb),
+    loadJpg(loader, `${base}textures/concrete_floor/concrete_floor_worn_001_nor_gl_1k.jpg`, floorRep, linear),
+    loadJpg(loader, `${base}textures/concrete_floor/concrete_floor_worn_001_rough_1k.jpg`, floorRep, linear),
+    loadJpg(loader, `${base}textures/concrete_floor/concrete_floor_worn_001_ao_1k.jpg`, floorRep, linear),
+    loadJpg(loader, `${base}textures/concrete_wall/concrete_wall_007_diff_1k.jpg`, wallRep, srgb),
+    loadJpg(loader, `${base}textures/concrete_wall/concrete_wall_007_nor_gl_1k.jpg`, wallRep, linear),
+    loadJpg(loader, `${base}textures/concrete_wall/concrete_wall_007_rough_1k.jpg`, wallRep, linear),
+    loadJpg(loader, `${base}textures/concrete_wall/concrete_wall_007_ao_1k.jpg`, wallRep, linear),
+    loadJpg(loader, `${base}textures/metal_plate/metal_plate_diff_1k.jpg`, metalRep, srgb),
+    loadJpg(loader, `${base}textures/metal_plate/metal_plate_nor_gl_1k.jpg`, metalRep, linear),
+    loadJpg(loader, `${base}textures/metal_plate/metal_plate_rough_1k.jpg`, metalRep, linear),
+    loadJpg(loader, `${base}textures/metal_plate/metal_plate_ao_1k.jpg`, metalRep, linear),
+    loadJpg(loader, `${base}textures/metal_plate/metal_plate_metal_1k.jpg`, metalRep, linear),
+    loadJpg(loader, `${base}textures/rusty_metal/rusty_metal_02_diff_1k.jpg`, rustRep, srgb),
+    loadJpg(loader, `${base}textures/rusty_metal/rusty_metal_02_nor_gl_1k.jpg`, rustRep, linear),
+    loadJpg(loader, `${base}textures/rusty_metal/rusty_metal_02_rough_1k.jpg`, rustRep, linear),
+    loadJpg(loader, `${base}textures/rusty_metal/rusty_metal_02_ao_1k.jpg`, rustRep, linear),
+  ]);
+
+  const ok = !!(floorDiff && wallDiff && metalDiff);
+  bundle = {
+    floor: { map: floorDiff, normalMap: floorNor, roughnessMap: floorRough, aoMap: floorAo },
+    wall: { map: wallDiff, normalMap: wallNor, roughnessMap: wallRough, aoMap: wallAo },
+    metal: {
+      map: metalDiff,
+      normalMap: metalNor,
+      roughnessMap: metalRough,
+      aoMap: metalAo,
+      metalnessMap: metalMetal,
+    },
+    rust: { map: rustDiff, normalMap: rustNor, roughnessMap: rustRough, aoMap: rustAo },
+    ok,
+  };
+  console.info(`[materials] Poly Haven PBR ${ok ? 'ready' : 'partial/fallback'} (CC0 1K)`);
+  return bundle;
+}
+
+function applyMaps(
+  mat: THREE.MeshStandardMaterial,
+  maps: PbrMaps | undefined,
+  normalScale = 0.6,
+): void {
+  if (!maps?.map) return;
+  mat.map = maps.map;
+  if (maps.normalMap) {
+    mat.normalMap = maps.normalMap;
+    mat.normalScale = new THREE.Vector2(normalScale, normalScale);
+  }
+  if (maps.roughnessMap) mat.roughnessMap = maps.roughnessMap;
+  if (maps.aoMap) {
+    mat.aoMap = maps.aoMap;
+    mat.aoMapIntensity = 0.9;
+  }
+  if (maps.metalnessMap) mat.metalnessMap = maps.metalnessMap;
+  mat.needsUpdate = true;
+}
+
 export function createConcreteMaterial(): THREE.MeshStandardMaterial {
+  const maps = bundle?.wall;
+  if (maps?.map) {
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xc8cdd3,
+      roughness: 0.92,
+      metalness: 0.04,
+      envMapIntensity: 0.45,
+    });
+    applyMaps(mat, maps, 0.55);
+    return mat;
+  }
+
   const map = makeNoiseTexture(128, (x, y) => {
     const n = fbm(x * 0.12, y * 0.12) * 55 + hash(x, y) * 18;
     const crack = fbm(x * 0.4, y * 0.4) > 0.72 ? -18 : 0;
@@ -124,6 +273,19 @@ export function createConcreteMaterial(): THREE.MeshStandardMaterial {
 }
 
 export function createDarkConcrete(): THREE.MeshStandardMaterial {
+  const maps = bundle?.wall;
+  if (maps?.map) {
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x6a7078,
+      roughness: 0.9,
+      metalness: 0.06,
+      envMapIntensity: 0.35,
+    });
+    applyMaps(mat, maps, 0.4);
+    // Darken via color; share maps
+    return mat;
+  }
+
   const map = makeNoiseTexture(128, (x, y) => {
     const n = fbm(x * 0.1 + 3, y * 0.1 + 1) * 36;
     const v = 38 + n;
@@ -153,6 +315,18 @@ export function createDarkConcrete(): THREE.MeshStandardMaterial {
 }
 
 export function createMetalMaterial(): THREE.MeshStandardMaterial {
+  const maps = bundle?.metal;
+  if (maps?.map) {
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xb0b8c2,
+      roughness: 0.35,
+      metalness: 0.95,
+      envMapIntensity: 1.35,
+    });
+    applyMaps(mat, maps, 0.75);
+    return mat;
+  }
+
   const map = makeNoiseTexture(64, (x, y) => {
     const band = (x + y * 2) % 8 < 1 ? 35 : 0;
     const scratch = hash(x * 3, y) > 0.92 ? 40 : 0;
@@ -184,6 +358,18 @@ export function createMetalMaterial(): THREE.MeshStandardMaterial {
 }
 
 export function createRustMetal(): THREE.MeshStandardMaterial {
+  const maps = bundle?.rust;
+  if (maps?.map) {
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xc4a890,
+      roughness: 0.78,
+      metalness: 0.42,
+      envMapIntensity: 0.75,
+    });
+    applyMaps(mat, maps, 0.65);
+    return mat;
+  }
+
   const map = makeNoiseTexture(64, (x, y) => {
     const rust = fbm(x * 0.25, y * 0.25);
     const r = 90 + rust * 50;
@@ -211,6 +397,18 @@ export function createRustMetal(): THREE.MeshStandardMaterial {
 }
 
 export function createFloorMaterial(): THREE.MeshStandardMaterial {
+  const maps = bundle?.floor;
+  if (maps?.map) {
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x9aa0a8,
+      roughness: 0.88,
+      metalness: 0.06,
+      envMapIntensity: 0.32,
+    });
+    applyMaps(mat, maps, 0.5);
+    return mat;
+  }
+
   const map = makeNoiseTexture(128, (x, y) => {
     const tile = (Math.floor(x / 16) + Math.floor(y / 16)) % 2;
     const n = fbm(x * 0.15, y * 0.15) * 22;
@@ -237,7 +435,6 @@ export function createFloorMaterial(): THREE.MeshStandardMaterial {
   const ao = makeNoiseTexture(
     64,
     (x, y) => {
-      // Soft corner darkening per tile for fake AO
       const fx = (x % 16) / 16;
       const fy = (y % 16) / 16;
       const edge = Math.min(fx, 1 - fx, fy, 1 - fy);

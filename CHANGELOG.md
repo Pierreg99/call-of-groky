@@ -7,6 +7,15 @@ Dates are Europe/Berlin calendar days (project ship day **2026-09-05**).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-05
+
+### Changed — Icon action buttons, ADS zoom, PBR assets
+
+- Touch/on-screen actions: circular SVG icon buttons (fire flash, ADS crosshair, jump chevron, reload arrows, sprint, weapon switch, inspect) — no letter labels; ≥44px + safe-area
+- ADS: proper FOV lerp, look sensitivity scale while ADS, stabler optic/holo; touch ADS tap-toggle + hold; desktop RMB unchanged
+- Poly Haven CC0 1K PBR (floor / wall / metal / rust) for arena materials; viewmodel + enemy material polish; ATTRIBUTION updated
+- Desktop PointerLock unchanged; prefers-reduced-motion respected
+
 ## [0.1.0] - 2026-09-05
 
 ### Added — Mobile touch (`d06287a`)

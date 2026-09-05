@@ -40,47 +40,49 @@ export interface ViewModelBuilt {
 
 function matKit() {
   const bodyMat = new THREE.MeshStandardMaterial({
-    color: 0x1a1f26,
-    metalness: 0.82,
-    roughness: 0.38,
-    envMapIntensity: 1.15,
+    color: 0x222830,
+    metalness: 0.88,
+    roughness: 0.32,
+    envMapIntensity: 1.35,
   });
   const accentMat = new THREE.MeshStandardMaterial({
-    color: 0x2c3640,
-    metalness: 0.92,
-    roughness: 0.28,
-    envMapIntensity: 1.3,
+    color: 0x3a4652,
+    metalness: 0.95,
+    roughness: 0.22,
+    envMapIntensity: 1.5,
   });
   const polymerMat = new THREE.MeshStandardMaterial({
-    color: 0x181c20,
-    roughness: 0.88,
-    metalness: 0.08,
-    envMapIntensity: 0.45,
+    color: 0x14181c,
+    roughness: 0.78,
+    metalness: 0.12,
+    envMapIntensity: 0.55,
   });
   const neonMat = new THREE.MeshStandardMaterial({
     color: 0x0a1218,
     emissive: 0x5ce1ff,
-    emissiveIntensity: 1.35,
-    metalness: 0.3,
-    roughness: 0.35,
+    emissiveIntensity: 1.45,
+    metalness: 0.35,
+    roughness: 0.3,
   });
-  const glassMat = new THREE.MeshStandardMaterial({
-    color: 0x1a2830,
-    metalness: 0.2,
-    roughness: 0.15,
-    emissive: 0x082018,
-    emissiveIntensity: 0.4,
-    envMapIntensity: 1.4,
+  const glassMat = new THREE.MeshPhysicalMaterial({
+    color: 0x152028,
+    metalness: 0.05,
+    roughness: 0.08,
+    transmission: 0.35,
+    thickness: 0.02,
+    emissive: 0x061810,
+    emissiveIntensity: 0.35,
+    envMapIntensity: 1.6,
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.92,
   });
   const gloveMat = new THREE.MeshStandardMaterial({
-    color: 0x3a4550,
-    roughness: 0.82,
-    metalness: 0.12,
-    envMapIntensity: 0.55,
+    color: 0x4a5560,
+    roughness: 0.74,
+    metalness: 0.1,
+    envMapIntensity: 0.65,
     emissive: 0x0a1014,
-    emissiveIntensity: 0.15,
+    emissiveIntensity: 0.12,
   });
   return { bodyMat, accentMat, polymerMat, neonMat, glassMat, gloveMat };
 }
@@ -411,13 +413,13 @@ export const RIFLE_STATS: WeaponStats = {
   adsSpread: 0.0035,
   range: 120,
   hipFov: 75,
-  adsFov: 52,
+  adsFov: 48,
   recoilPitch: 0.019,
   recoilYaw: 0.011,
   recoilAdsMul: 0.52,
   kickAmount: 0.072,
   hipPos: [0.3, -0.3, -0.58],
-  adsPos: [0.0, -0.168, -0.38],
+  adsPos: [0.0, -0.168, -0.42],
   slot: 1,
   kind: 'rifle',
 };
@@ -433,13 +435,13 @@ export const SMG_STATS: WeaponStats = {
   adsSpread: 0.007,
   range: 70,
   hipFov: 78,
-  adsFov: 58,
+  adsFov: 52,
   recoilPitch: 0.012,
   recoilYaw: 0.016,
   recoilAdsMul: 0.62,
   kickAmount: 0.045,
   hipPos: [0.26, -0.26, -0.48],
-  adsPos: [0.0, -0.145, -0.34],
+  adsPos: [0.0, -0.13, -0.36],
   slot: 2,
   kind: 'smg',
 };
@@ -548,6 +550,16 @@ export class Firearm {
       return;
     }
     this.ads = on;
+  }
+
+  /** Hip→ADS FOV for external punch compositing. */
+  getTargetFov(): number {
+    return THREE.MathUtils.lerp(this.stats.hipFov, this.stats.adsFov, this.adsBlend);
+  }
+
+  /** Look sensitivity multiplier from adsBlend (hip 1 → ADS ~0.4). */
+  getAdsLookMul(): number {
+    return THREE.MathUtils.lerp(1, 0.4, this.adsBlend);
   }
 
   /** Start inspect animation (F). Returns false if busy. */
@@ -701,12 +713,14 @@ export class Firearm {
     this.switchCooldown = Math.max(0, this.switchCooldown - dt);
 
     const adsTarget = this.ads && !this.reloading && this.switchCooldown <= 0 ? 1 : 0;
-    this.adsBlend = THREE.MathUtils.damp(this.adsBlend, adsTarget, 14, dt);
+    // Smooth but decisive ADS blend (~120–160ms feel)
+    this.adsBlend = THREE.MathUtils.damp(this.adsBlend, adsTarget, 16, dt);
     if (this.ads && !this.wasAds) gameAudio.play('ads');
     this.wasAds = this.ads;
 
+    // Proper FOV lerp every frame (kill-punch may add on top in main)
     const fov = THREE.MathUtils.lerp(this.stats.hipFov, this.stats.adsFov, this.adsBlend);
-    if (Math.abs(this.camera.fov - fov) > 0.05) {
+    if (Math.abs(this.camera.fov - fov) > 0.01) {
       this.camera.fov = fov;
       this.camera.updateProjectionMatrix();
     }
@@ -743,9 +757,9 @@ export class Firearm {
     }
 
     this.bob.copy(bobOffset);
-    const bobScale = THREE.MathUtils.lerp(1, 0.22, this.adsBlend);
-    const breathY = Math.sin(this.idlePhase * 1.4) * 0.004 * (1 - this.adsBlend * 0.7);
-    const breathX = Math.sin(this.idlePhase * 0.9) * 0.0025 * (1 - this.adsBlend);
+    const bobScale = THREE.MathUtils.lerp(1, 0.08, this.adsBlend);
+    const breathY = Math.sin(this.idlePhase * 1.4) * 0.004 * (1 - this.adsBlend * 0.92);
+    const breathX = Math.sin(this.idlePhase * 0.9) * 0.0025 * (1 - this.adsBlend * 0.95);
 
     // Inspect: flip / present weapon with idle sway
     if (this.inspecting) {
@@ -780,10 +794,14 @@ export class Firearm {
         THREE.MathUtils.lerp(hipY, adsY, this.adsBlend) + this.bob.y * bobScale + breathY - raise,
         THREE.MathUtils.lerp(hipZ, adsZ, this.adsBlend) - this.kick * this.stats.kickAmount,
       );
+      // Near-zero roll/yaw while ADS so holo/red-dot stays centered
+      const adsStill = 1 - this.adsBlend;
       this.viewModel.rotation.set(
-        this.kick * (this.stats.kind === 'smg' ? 0.04 : 0.05) + this.bob.y * 0.35 * bobScale + this.switchAnim * 0.2,
-        -this.bob.x * 0.95 * bobScale + breathX * 2 - this.switchAnim * 0.12,
-        this.bob.x * 0.55 * bobScale - this.kick * 0.02 + roll,
+        this.kick * (this.stats.kind === 'smg' ? 0.04 : 0.05) * (0.35 + 0.65 * adsStill) +
+          this.bob.y * 0.35 * bobScale +
+          this.switchAnim * 0.2,
+        (-this.bob.x * 0.95 * bobScale + breathX * 2) * adsStill - this.switchAnim * 0.12,
+        (this.bob.x * 0.55 * bobScale - this.kick * 0.02) * adsStill + roll,
       );
     }
 

@@ -56,9 +56,13 @@ export class FpsController {
   private touchSprint = false;
   private touchJumpQueued = false;
   private readonly lookEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+  /** Multiplier applied to look (PointerLock + touch) while ADS — set from weapon adsBlend. */
+  private adsLookScale = 1;
+  private basePointerSpeed = 1;
 
   constructor(camera: THREE.Camera, domElement: HTMLElement) {
     this.controls = new PointerLockControls(camera, domElement);
+    this.basePointerSpeed = this.controls.pointerSpeed;
     this.object = this.controls.getObject();
     this.object.position.set(0, this.eyeHeight, 8);
     this.state = {
@@ -102,11 +106,22 @@ export class FpsController {
 
   /** Maps 0.3–2.0 UI sensitivity onto PointerLockControls.pointerSpeed */
   setSensitivity(sens: number): void {
-    this.controls.pointerSpeed = Math.max(0.2, Math.min(2.5, sens));
+    this.basePointerSpeed = Math.max(0.2, Math.min(2.5, sens));
+    this.applyPointerSpeed();
   }
 
   getSensitivity(): number {
-    return this.controls.pointerSpeed;
+    return this.basePointerSpeed;
+  }
+
+  /** Scale look while ADS (1 = hip, ~0.4 = ADS). Affects PointerLock + touch look. */
+  setAdsLookScale(scale: number): void {
+    this.adsLookScale = THREE.MathUtils.clamp(scale, 0.2, 1.2);
+    this.applyPointerSpeed();
+  }
+
+  private applyPointerSpeed(): void {
+    this.controls.pointerSpeed = this.basePointerSpeed * this.adsLookScale;
   }
 
   lock(): void {
@@ -153,6 +168,7 @@ export class FpsController {
   applyTouchLook(dx: number, dy: number): void {
     if (!this.touchActive) return;
     const cam = this.object;
+    // basePointerSpeed already multiplied into pointerSpeed via adsLookScale
     const speed = 0.002 * this.controls.pointerSpeed;
     this.lookEuler.setFromQuaternion(cam.quaternion);
     this.lookEuler.y -= dx * speed;

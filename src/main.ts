@@ -13,6 +13,7 @@ import { FpsCounter } from './ui/fps';
 import { gameAudio } from './audio/sfx';
 import { settingsFor } from './engine/quality';
 import { TouchControls, prefersTouchControls } from './ui/touchControls';
+import { loadWorldPbrTextures } from './world/materials';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
@@ -73,6 +74,7 @@ function savePersisted(s: PersistedSettings): void {
 async function boot(): Promise<void> {
   const gfx = new GameRenderer(canvas);
   await applyEnvironment(gfx.renderer, gfx.scene);
+  await loadWorldPbrTextures();
 
   const persisted = loadPersisted();
   // URL ?quality= overrides saved preset (captures / benchmarks)
@@ -221,7 +223,6 @@ async function boot(): Promise<void> {
   let elapsed = 0;
   const clock = new THREE.Clock();
   const bob = new THREE.Vector3();
-  const baseFov = { hip: 75 };
   const pickupRadius = 1.35;
 
   function tryCollectAmmo(): void {
@@ -305,7 +306,7 @@ async function boot(): Promise<void> {
       const hint = document.querySelector('#overlay .hint');
       if (hint) {
         hint.textContent =
-          'Tap Deploy to start · Left stick move · Right drag look · FIRE / ADS / JMP / RLD / SPR / WPN · Esc/⚙ settings';
+          'Tap Deploy to start · Left stick move · Right drag look · Icon buttons: fire / ADS (tap toggle or hold) / jump / reload / sprint / switch · Esc/⚙ settings';
       }
       startBtn.textContent = 'TAP TO START';
       document.documentElement.classList.add('touch-ui');
@@ -504,11 +505,10 @@ async function boot(): Promise<void> {
 
     if (killPunch > 0) {
       killPunch = Math.max(0, killPunch - rawDt * 2.2);
-      const kick = killPunch * 4;
-      if (loadout.active.adsBlend < 0.5) {
-        gfx.camera.fov = baseFov.hip + kick;
-        gfx.camera.updateProjectionMatrix();
-      }
+      const kick = killPunch * 4 * (1 - loadout.active.adsBlend * 0.85);
+      // Compose on weapon hip→ADS FOV (do not fight ADS lerp)
+      gfx.camera.fov = loadout.active.getTargetFov() + kick;
+      gfx.camera.updateProjectionMatrix();
     }
 
     const pos = player.object.position;
@@ -530,6 +530,7 @@ async function boot(): Promise<void> {
         }
       }
       loadout.setAds(adsHeld && !loadout.active.reloading && !loadout.inspecting);
+      player.setAdsLookScale(loadout.active.getAdsLookMul());
       hud.setAds(loadout.active.adsBlend > 0.5);
       loadout.tryFire(firing && !loadout.inspecting, dt);
       tryCollectAmmo();
@@ -574,8 +575,11 @@ async function boot(): Promise<void> {
           gameAudio.play('kill');
         }
       }
-    } else if (phase === 'defend') {
-      hud.setZoneHint(true, false, defendHeld, DEFEND_SECONDS);
+    } else {
+      player.setAdsLookScale(1);
+      if (phase === 'defend') {
+        hud.setZoneHint(true, false, defendHeld, DEFEND_SECONDS);
+      }
     }
 
     player.getBobOffset(bob);
