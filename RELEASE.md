@@ -11,6 +11,10 @@
 
 Low quality preset keeps **ShadowMap 512**. Expect materially higher FPS on a real GPU.
 
+## PostFX / shaders (User approve 2026-09-05)
+
+User 2026-09-05 **"All shader allowed / Approved all"** — **Bloom / SSAO / Chromatic / SMAA** now User-approved on **all** presets. Low keeps **Shadow ≤512** (and pixelRatio cap **1**) but shaders are ON. Perf remains **Accepted unverified (SwiftShader-only)**. `prefers-reduced-motion` still dampens chromatic / vignette / recoil. Ship **GO** / CoD **FAIL** unchanged.
+
 ## Loop 8 highlights
 
 - **Settings** (Esc / gear): sensitivity + Low/Med/High quality (localStorage)

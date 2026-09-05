@@ -22,7 +22,8 @@ export function detectQuality(): QualitySettings {
   const mem = (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 4;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-  let preset: QualityPreset = 'medium';
+  // User 2026-09-05: all shaders approved — default toward high when unsure
+  let preset: QualityPreset = 'high';
   if (cores <= 4 || mem <= 4) preset = 'low';
   if (cores >= 8 && mem >= 8) preset = 'high';
 
@@ -38,17 +39,17 @@ export function settingsFor(
       return {
         preset,
         pixelRatio: Math.min(dpr, 1),
-        // Loop 3 gate: low ShadowMap ≤512
+        // Loop 3 gate: low ShadowMap ≤512 — shaders ON (user approved all)
         shadowMapSize: 512,
         shadows: true,
         antialias: false,
         maxLights: 4,
-        postAA: 'fxaa',
-        bloom: false,
-        bloomStrength: 0,
-        bloomThreshold: 0.9,
-        ssao: false,
-        chromatic: false,
+        postAA: 'smaa',
+        bloom: true,
+        bloomStrength: 0.1,
+        bloomThreshold: 0.88,
+        ssao: true,
+        chromatic: true,
         vignetteStrength: 0.5,
       };
     case 'high':
@@ -61,8 +62,8 @@ export function settingsFor(
         maxLights: 8,
         postAA: 'smaa',
         bloom: true,
-        // Punchier, less milk: lower strength + higher threshold
-        bloomStrength: 0.14,
+        // Punchier bloom (slight bump vs prior 0.14)
+        bloomStrength: 0.16,
         bloomThreshold: 0.88,
         ssao: true,
         chromatic: true,
@@ -80,7 +81,7 @@ export function settingsFor(
         bloom: true,
         bloomStrength: 0.11,
         bloomThreshold: 0.86,
-        ssao: false,
+        ssao: true,
         chromatic: true,
         vignetteStrength: 0.65,
       };

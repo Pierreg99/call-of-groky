@@ -17,11 +17,11 @@ Artifact-Gate (screenshots + green build + Pages) is the deliverable bar. **Do n
 
 | Preset | PR cap | Shadow map | PostFX stack |
 |--------|--------|------------|--------------|
-| low | 1.0 | **512** | Render → FXAA → Vignette → Output |
-| medium | 1.5 | 1536 | Render → Bloom (hi thresh) → Chromatic → Vignette → SMAA → Output |
-| high | 2.0 | 2048 | Render → SSAO → Bloom (hi thresh) → Chromatic → Vignette → SMAA → Output |
+| low | 1.0 | **512** | Render → SSAO → Bloom → Chromatic → Vignette → SMAA → Output |
+| medium | 1.5 | 1536 | Render → SSAO → Bloom (hi thresh) → Chromatic → Vignette → SMAA → Output |
+| high | 2.0 | 2048 | Render → SSAO → Bloom (punchy) → Chromatic → Vignette → SMAA → Output |
 
-Runtime settings (Esc / gear) switch presets live; Low still **ShadowMap ≤512**. `prefers-reduced-motion` cuts chromatic to 0, vignette ~35%, recoil/bob x0.25.
+**User 2026-09-05 "All shader allowed / Approved all"** — Low keeps **Shadow ≤512** but **Bloom / SSAO / Chromatic / SMAA** now User-approved on **all** presets. Perf remains **Accepted unverified**. `prefers-reduced-motion` still dampens chromatic / vignette / recoil (chromatic→0, vignette ~35%, recoil/bob ×0.25). Ship **GO** / CoD **FAIL** unchanged. Runtime settings (Esc / gear) switch presets live.
 
 ### Perf note (best-effort, Low preset)
 
@@ -32,7 +32,7 @@ Runtime settings (Esc / gear) switch presets live; Low still **ShadowMap ≤512*
 | Desktop Low (1440×900, `quality=low`) | **~17–22** (headless noise) | mid-teens | **SwiftShader only** — no `/dev/dri` |
 | Mobile Low (390×844, `quality=low`) | **~15–20** | ~15–18 | SwiftShader; minimap + settings UI overhead small |
 
-Expect materially higher numbers on a real discrete GPU. Low preset keeps ShadowMap **≤512**, no bloom/SSAO.
+Expect materially higher numbers on a real discrete GPU. Low preset keeps ShadowMap **≤512**; bloom/SSAO/chromatic **ON** (user approve 2026-09-05).
 
 ## What improved (Loop 7 → Loop 8)
 
