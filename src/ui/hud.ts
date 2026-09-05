@@ -50,6 +50,7 @@ export class Hud {
   private readonly winBanner: HTMLElement;
   private readonly zoneHint: HTMLElement;
   private readonly settingsPanel: HTMLElement;
+  private readonly dmgDirs: HTMLElement;
   private readonly sensSlider: HTMLInputElement;
   private readonly sensVal: HTMLElement;
   private hitmarkerTimer = 0;
@@ -91,6 +92,7 @@ export class Hud {
     this.winBanner = document.getElementById('win-banner')!;
     this.zoneHint = document.getElementById('zone-hint')!;
     this.settingsPanel = document.getElementById('settings-panel')!;
+    this.dmgDirs = document.getElementById('dmg-dirs')!;
     this.sensSlider = document.getElementById('sens-slider') as HTMLInputElement;
     this.sensVal = document.getElementById('sens-val')!;
   }
@@ -331,6 +333,41 @@ export class Hud {
   flashDamage(): void {
     this.damageFlash.classList.add('show');
     this.damageTimer = 0.18;
+  }
+
+  /**
+   * Directional damage indicator: world hit origin → screen-edge chevron
+   * relative to camera forward (Boty-style dmg-dirs).
+   */
+  flashDamageFrom(
+    camera: THREE.Camera,
+    playerPos: THREE.Vector3,
+    fromWorld: THREE.Vector3,
+  ): void {
+    this.flashDamage();
+    camera.getWorldDirection(this.tmpFwd);
+    this.tmpFwd.y = 0;
+    if (this.tmpFwd.lengthSq() < 1e-6) this.tmpFwd.set(0, 0, -1);
+    else this.tmpFwd.normalize();
+
+    this.tmpTo.copy(fromWorld).sub(playerPos);
+    this.tmpTo.y = 0;
+    if (this.tmpTo.lengthSq() < 1e-6) return;
+    this.tmpTo.normalize();
+
+    const cross = this.tmpFwd.x * this.tmpTo.z - this.tmpFwd.z * this.tmpTo.x;
+    const dot = this.tmpFwd.x * this.tmpTo.x + this.tmpFwd.z * this.tmpTo.z;
+    const ang = Math.atan2(cross, dot);
+    const deg = (-ang * 180) / Math.PI;
+
+    const el = document.createElement('div');
+    el.className = 'dmg-dir show';
+    el.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
+    this.dmgDirs.appendChild(el);
+    window.setTimeout(() => {
+      el.classList.remove('show');
+      window.setTimeout(() => el.remove(), 120);
+    }, 420);
   }
 
   showKillcam(name: string): void {

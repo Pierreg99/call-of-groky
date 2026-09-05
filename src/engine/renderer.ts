@@ -10,6 +10,37 @@ import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { VignetteShader } from 'three/addons/shaders/VignetteShader.js';
 import { detectQuality, prefersReducedMotion, type QualitySettings } from './quality';
 
+
+/** Subtle animated film grain — intensity gated by quality + reduced-motion */
+const FilmGrainShader = {
+  name: 'FilmGrainShader',
+  uniforms: {
+    tDiffuse: { value: null as THREE.Texture | null },
+    time: { value: 0 },
+    amount: { value: 0.035 },
+  },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform float time;
+    uniform float amount;
+    varying vec2 vUv;
+    float hash(vec2 p) {
+      return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+    }
+    void main() {
+      vec4 color = texture2D(tDiffuse, vUv);
+      float n = hash(vUv * vec2(1920.0, 1080.0) + fract(time * 17.13));
+      float g = (n - 0.5) * amount;
+      gl_FragColor = vec4(color.rgb + g, color.a);
+    }`,
+};
+
 /** Subtle RGB split — gated by quality + reduced-motion */
 const ChromaticShader = {
   name: 'ChromaticShader',
@@ -50,7 +81,9 @@ export class GameRenderer {
   private chromaticPass: ShaderPass;
   private fxaaPass: ShaderPass;
   private smaaPass: SMAAPass;
+  private grainPass: ShaderPass;
   private reducedMotion: boolean;
+  private grainTime = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     this.quality = detectQuality();
@@ -129,6 +162,11 @@ export class GameRenderer {
     this.fxaaPass.enabled = this.quality.postAA === 'fxaa';
     this.composer.addPass(this.fxaaPass);
 
+    this.grainPass = new ShaderPass(FilmGrainShader);
+    this.grainPass.uniforms['amount'].value =
+      this.quality.filmGrain && !this.reducedMotion ? this.quality.filmGrainAmount : 0;
+    this.composer.addPass(this.grainPass);
+
     this.composer.addPass(new OutputPass());
 
     document.documentElement.classList.toggle('reduced-motion', this.reducedMotion);
@@ -152,6 +190,8 @@ export class GameRenderer {
     this.vignettePass.uniforms['darkness'].value = vig;
     this.chromaticPass.uniforms['amount'].value =
       this.quality.chromatic && !this.reducedMotion ? 0.00115 : 0;
+    this.grainPass.uniforms['amount'].value =
+      this.quality.filmGrain && !this.reducedMotion ? this.quality.filmGrainAmount : 0;
   }
 
   setQuality(settings: QualitySettings): void {
@@ -164,6 +204,13 @@ export class GameRenderer {
     this.ssaoPass.enabled = settings.ssao;
     this.smaaPass.enabled = settings.postAA === 'smaa';
     this.fxaaPass.enabled = settings.postAA === 'fxaa';
+    // SMAA: refresh size for crisp edges after preset swap
+    if (settings.postAA === 'smaa') {
+      this.smaaPass.setSize(
+        window.innerWidth * settings.pixelRatio,
+        window.innerHeight * settings.pixelRatio,
+      );
+    }
     this.applyMotionPrefs();
     this.onResize();
   }
@@ -203,7 +250,11 @@ export class GameRenderer {
     }
   }
 
-  render(): void {
+  render(dt = 1 / 60): void {
+    this.grainTime += dt;
+    if (this.grainPass?.uniforms['time']) {
+      this.grainPass.uniforms['time'].value = this.grainTime;
+    }
     this.composer.render();
   }
 }

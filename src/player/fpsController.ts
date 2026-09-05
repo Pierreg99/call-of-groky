@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import type * as CANNON from 'cannon-es';
+import type { PhysicsWorld } from '../engine/physics';
 
 export interface PlayerState {
   health: number;
@@ -45,8 +47,16 @@ export class FpsController {
   bobPhase = 0;
   bobAmount = 0;
   sway = new THREE.Vector2();
+  /** Camera roll from strafe (radians), damped. */
+  roll = 0;
+  /** Sprint FOV blend 0–1 for external compositing. */
+  sprintFovBlend = 0;
   private lastMouseX = 0;
   private lastMouseY = 0;
+  /** Look velocity for viewmodel sway feed. */
+  lookVel = new THREE.Vector2();
+  private landBob = 0;
+  private wasGrounded = true;
 
   /** Soft lock for touch play (no PointerLock API). */
   private touchActive = false;
@@ -59,6 +69,11 @@ export class FpsController {
   /** Multiplier applied to look (PointerLock + touch) while ADS — set from weapon adsBlend. */
   private adsLookScale = 1;
   private basePointerSpeed = 1;
+
+  /** Optional cannon-es capsule (Boty-parity). */
+  private phys: PhysicsWorld | null = null;
+  private physBody: CANNON.Body | null = null;
+  private capsuleHalf = 0.78;
 
   constructor(camera: THREE.Camera, domElement: HTMLElement) {
     this.controls = new PointerLockControls(camera, domElement);
@@ -87,8 +102,10 @@ export class FpsController {
     document.addEventListener('keyup', (e) => this.keys.delete(e.code));
     document.addEventListener('mousemove', (e) => {
       if (!this.controls.isLocked) return;
-      this.sway.x += e.movementX * 0.00035;
-      this.sway.y += e.movementY * 0.00035;
+      this.sway.x += e.movementX * 0.00045;
+      this.sway.y += e.movementY * 0.00045;
+      this.lookVel.x += e.movementX * 0.0012;
+      this.lookVel.y += e.movementY * 0.0012;
       this.lastMouseX = e.movementX;
       this.lastMouseY = e.movementY;
     });
@@ -102,6 +119,14 @@ export class FpsController {
   setFloors(floors: FloorPad[]): void {
     this.floors.length = 0;
     this.floors.push(...floors);
+  }
+
+  /** Attach cannon-es player capsule; movement uses physics after this. */
+  attachPhysics(phys: PhysicsWorld, body: CANNON.Body): void {
+    this.phys = phys;
+    this.physBody = body;
+    this.capsuleHalf = Math.max(0.5, this.eyeHeight * 0.46);
+    body.position.set(this.object.position.x, this.capsuleHalf, this.object.position.z);
   }
 
   /** Maps 0.3–2.0 UI sensitivity onto PointerLockControls.pointerSpeed */
@@ -168,15 +193,16 @@ export class FpsController {
   applyTouchLook(dx: number, dy: number): void {
     if (!this.touchActive) return;
     const cam = this.object;
-    // basePointerSpeed already multiplied into pointerSpeed via adsLookScale
     const speed = 0.002 * this.controls.pointerSpeed;
     this.lookEuler.setFromQuaternion(cam.quaternion);
     this.lookEuler.y -= dx * speed;
     this.lookEuler.x -= dy * speed;
     this.lookEuler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.lookEuler.x));
     cam.quaternion.setFromEuler(this.lookEuler);
-    this.sway.x += dx * 0.00035;
-    this.sway.y += dy * 0.00035;
+    this.sway.x += dx * 0.00045;
+    this.sway.y += dy * 0.00045;
+    this.lookVel.x += dx * 0.0012;
+    this.lookVel.y += dy * 0.0012;
     this.lastMouseX = dx;
     this.lastMouseY = dy;
   }
@@ -190,7 +216,6 @@ export class FpsController {
   }
 
   update(dt: number): void {
-    const grounded = this.state.grounded;
     this.state.crouching = this.keys.has('ControlLeft') || this.keys.has('ControlRight');
 
     this.direction.set(0, 0, 0);
@@ -215,8 +240,6 @@ export class FpsController {
     if (this.state.crouching) speed = this.crouchSpeed;
     else if (this.state.sprinting) speed = this.sprintSpeed;
 
-    const accel = grounded ? 18 : 6;
-
     const wish = this.tmpVec.set(this.direction.x, 0, this.direction.z);
     if (wish.lengthSq() > 0) {
       wish.applyQuaternion(this.object.quaternion);
@@ -224,43 +247,115 @@ export class FpsController {
       wish.normalize().multiplyScalar(speed);
     }
 
-    this.velocity.x = THREE.MathUtils.damp(this.velocity.x, wish.x, accel, dt);
-    this.velocity.z = THREE.MathUtils.damp(this.velocity.z, wish.z, accel, dt);
-
     const wantJump = this.keys.has('Space') || this.touchJumpQueued;
-    if (grounded && wantJump && !this.state.crouching) {
-      this.velocity.y = this.jumpSpeed;
-      this.state.grounded = false;
-    }
     this.touchJumpQueued = false;
 
-    this.velocity.y -= this.gravity * dt;
-
-    this.moveWithCollision(dt);
-
-    const hSpeed = Math.hypot(this.velocity.x, this.velocity.z);
-    const bobSpeed = this.state.sprinting ? 14 : 10;
-    if (this.state.grounded && hSpeed > 0.4) {
-      this.bobPhase += dt * bobSpeed * (hSpeed / speed);
-      this.bobAmount = THREE.MathUtils.damp(this.bobAmount, 1, 8, dt);
+    if (this.phys && this.physBody) {
+      this.updatePhysics(dt, wish, speed, wantJump);
     } else {
-      this.bobAmount = THREE.MathUtils.damp(this.bobAmount, 0, 10, dt);
+      this.updateKinematic(dt, wish, speed, wantJump);
     }
 
-    this.sway.x = THREE.MathUtils.damp(this.sway.x, 0, 8, dt);
-    this.sway.y = THREE.MathUtils.damp(this.sway.y, 0, 8, dt);
+    // Sprint FOV blend (wider hip FOV while sprinting, eased)
+    const sprintTarget = this.state.sprinting && this.state.grounded ? 1 : 0;
+    this.sprintFovBlend = THREE.MathUtils.damp(this.sprintFovBlend, sprintTarget, 6, dt);
+
+    // Strafe camera roll (subtle cinematic lean)
+    const strafe = this.direction.x;
+    const rollTarget = -strafe * (this.state.sprinting ? 0.028 : 0.018);
+    this.roll = THREE.MathUtils.damp(this.roll, rollTarget, 8, dt);
+    // Apply roll on Z (YXZ order) without rewriting pitch/yaw
+    this.object.rotation.z = this.roll;
+
+    const hSpeed = Math.hypot(this.velocity.x, this.velocity.z);
+    const bobSpeed = this.state.sprinting ? 16 : 11;
+    if (this.state.grounded && hSpeed > 0.4) {
+      this.bobPhase += dt * bobSpeed * (hSpeed / Math.max(speed, 0.1));
+      const bobTarget = this.state.sprinting ? 1.35 : this.state.crouching ? 0.55 : 1;
+      this.bobAmount = THREE.MathUtils.damp(this.bobAmount, bobTarget, 10, dt);
+    } else {
+      this.bobAmount = THREE.MathUtils.damp(this.bobAmount, 0, 12, dt);
+    }
+
+    // Landing thump
+    if (this.state.grounded && !this.wasGrounded) {
+      this.landBob = 1;
+    }
+    this.wasGrounded = this.state.grounded;
+    this.landBob = THREE.MathUtils.damp(this.landBob, 0, 14, dt);
+
+    this.sway.x = THREE.MathUtils.damp(this.sway.x, 0, 9, dt);
+    this.sway.y = THREE.MathUtils.damp(this.sway.y, 0, 9, dt);
+    this.lookVel.x = THREE.MathUtils.damp(this.lookVel.x, 0, 10, dt);
+    this.lookVel.y = THREE.MathUtils.damp(this.lookVel.y, 0, 10, dt);
     this.lastMouseX *= 0.85;
     this.lastMouseY *= 0.85;
   }
 
+  private updatePhysics(dt: number, wish: THREE.Vector3, _speed: number, wantJump: boolean): void {
+    const body = this.physBody!;
+    const phys = this.phys!;
+    const grounded = phys.consumeGrounded() || body.velocity.y >= -0.35 && body.position.y < this.capsuleHalf + 0.15;
+    this.state.grounded = grounded;
+
+    const accel = grounded ? 22 : 7;
+    const vx = THREE.MathUtils.damp(body.velocity.x, wish.x, accel, dt);
+    const vz = THREE.MathUtils.damp(body.velocity.z, wish.z, accel, dt);
+    body.velocity.x = vx;
+    body.velocity.z = vz;
+
+    if (grounded && wantJump && !this.state.crouching) {
+      body.velocity.y = this.jumpSpeed;
+      this.state.grounded = false;
+    }
+
+    phys.step(dt);
+
+    // Sync eye position from capsule center
+    const eye = this.currentHeight - this.capsuleHalf;
+    this.object.position.set(body.position.x, body.position.y + eye, body.position.z);
+    this.velocity.set(body.velocity.x, body.velocity.y, body.velocity.z);
+
+    // Soft arena clamp
+    body.position.x = THREE.MathUtils.clamp(body.position.x, -28, 28);
+    body.position.z = THREE.MathUtils.clamp(body.position.z, -28, 28);
+  }
+
+  private updateKinematic(dt: number, wish: THREE.Vector3, speed: number, wantJump: boolean): void {
+    const grounded = this.state.grounded;
+    const accel = grounded ? 18 : 6;
+
+    this.velocity.x = THREE.MathUtils.damp(this.velocity.x, wish.x, accel, dt);
+    this.velocity.z = THREE.MathUtils.damp(this.velocity.z, wish.z, accel, dt);
+
+    if (grounded && wantJump && !this.state.crouching) {
+      this.velocity.y = this.jumpSpeed;
+      this.state.grounded = false;
+    }
+
+    this.velocity.y -= this.gravity * dt;
+    this.moveWithCollision(dt);
+
+    void speed;
+  }
+
   getBobOffset(out: THREE.Vector3): THREE.Vector3 {
     const a = this.bobAmount;
+    const land = this.landBob;
     out.set(
-      Math.cos(this.bobPhase * 0.5) * 0.015 * a + this.sway.x,
-      Math.sin(this.bobPhase) * 0.02 * a - Math.abs(this.sway.y) * 0.4,
-      0,
+      Math.cos(this.bobPhase * 0.5) * 0.022 * a + this.sway.x * 1.15 + this.lookVel.x * 0.08,
+      Math.sin(this.bobPhase) * 0.028 * a -
+        Math.abs(this.sway.y) * 0.45 -
+        land * 0.04 +
+        this.lookVel.y * 0.05,
+      Math.sin(this.bobPhase * 0.5) * 0.006 * a,
     );
     return out;
+  }
+
+  /** Extra vertical eye bob applied in main (camera local). */
+  getEyeBobY(): number {
+    return Math.sin(this.bobPhase) * 0.035 * this.bobAmount - this.landBob * 0.055;
   }
 
   private sampleFloor(x: number, z: number): number {
@@ -310,7 +405,6 @@ export class FpsController {
     this.tmpBox.min.set(pos.x - r, feet, pos.z - r);
     this.tmpBox.max.set(pos.x + r, Math.max(feet + 0.1, head), pos.z + r);
     for (const box of this.colliders) {
-      // Ignore boxes whose top is a walkable floor under our feet
       if (box.max.y <= this.floorY + 0.15 && box.max.y >= this.floorY - 0.05) continue;
       if (this.tmpBox.intersectsBox(box)) return true;
     }

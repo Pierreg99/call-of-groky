@@ -8,10 +8,16 @@
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
-  "keywords": ["three.js", "fps", "vite", "typescript"],
+  "keywords": [
+    "three.js",
+    "fps",
+    "vite",
+    "typescript"
+  ],
   "author": "Pierreg99",
   "license": "MIT",
   "dependencies": {
+    "cannon-es": "^0.20.0",
     "three": "^0.170.0"
   },
   "devDependencies": {
