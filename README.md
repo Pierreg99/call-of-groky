@@ -1,6 +1,6 @@
 # Call of Groky
 
-Cinematic **Three.js** FPS greybox — **Loop 2** quality pass.
+Cinematic **Three.js** FPS greybox — **Loop 3** silhouette / lighting polish.
 
 Not a Call of Duty clone. Premium-feeling WebGL arena shooter (Vite + TypeScript + Three.js r170+). Browser Three.js pushed harder; still **not** an IW-engine peer.
 
@@ -27,41 +27,32 @@ Production: Vite build to `dist/`, then Vite preview.
 | RMB | ADS (FOV lerp) |
 | R | Reload |
 | Esc | Unlock pointer |
+
 ## Quality presets
 
 Auto-detected from CPU cores / `deviceMemory`. Canvas MSAA off; AA is post.
 
 | Preset | Pixel ratio | Shadow map | Post AA | Bloom | SSAO | Chromatic |
 |--------|-------------|------------|---------|-------|------|-----------|
-| **low** | ≤1 | 1024 | FXAA | off | off | off |
-| **medium** | ≤1.5 | 1536 | SMAA | subtle | off | on |
-| **high** | ≤2 | 2048 | SMAA | subtle+ | on | on |
+| **low** | ≤1 | **512** | FXAA | off | off | off |
+| **medium** | ≤1.5 | 1536 | SMAA | subtle (hi thresh) | off | on |
+| **high** | ≤2 | 2048 | SMAA | subtle (hi thresh) | on | on |
 
 Vignette scales with preset. `prefers-reduced-motion: reduce` dampens recoil/bob, chromatic, and CSS vignette.
 
-## Loop 2 features
+## Loop 3 features
 
-- **Post stack:** EffectComposer → RenderPass → optional SSAO → UnrealBloomPass → chromatic → vignette → SMAA/FXAA → OutputPass
-- **Materials:** procedural PBR with normal + roughness maps, metal/concrete contrast, neon emissives, PMREM `RoomEnvironment`
-- **Weapon:** RMB ADS FOV lerp, dual-layer muzzle flash, additive cylinder tracers, shell casing eject
-- **Enemies:** patrol → chase → shoot state AI with chip damage + hit flash (not proximity-only)
-- **Audio:** procedural WebAudio (gunshot, reload, footstep, hit, death, enemy shot) with stereo distance
-- **Collision:** AABB walls + walkable floor pads (north platform / ramp steps)
-- **A11y:** reduced-motion dampens shake/vignette
+- **Soldiers:** procedural low-poly helmet/armor/limb silhouettes with faction accents + contact blobs
+- **Rifle viewmodel:** stock / handguard / optic / muzzle-brake silhouette; breath + walk bob
+- **Lighting:** darker ambient, stronger key + cyan rim, neon-tinted PMREM; anti-milk bloom threshold
+- **Fog:** density tied to engagement range (readable mid-fight)
+- **Grounding:** floor AO/grout, oil/caution/scorch decals, prop contact shadows
+- **AI cover:** crates + nav cover points; duck / peek-fire when damaged
+- **Low preset:** ShadowMap ≤512
 
-## Phase 1 → Loop 2 (diff notes)
+## Loop 2 carry-forward
 
-| Area | Phase 1 | Loop 2 |
-|------|---------|--------|
-| Render | Direct `renderer.render` | EffectComposer post stack |
-| AA | Optional canvas MSAA | FXAA / SMAA gated by preset |
-| Bloom / SSAO | None | Bloom med/high; SSAO high |
-| Materials | Flat noise albedo | Normal + roughness maps, neon, PMREM |
-| Weapon | Hip only | ADS FOV + shell casings |
-| Enemies | Idle bob + proximity chip | Patrol/chase/shoot AI |
-| Audio | Silent | Procedural WebAudio |
-| Collision | AABB walls, flat floor | + raised floor pads |
-| Motion prefs | None | `prefers-reduced-motion` |
+Post stack (SSAO/bloom/SMAA), ADS, tracers/shells, patrol/chase/shoot AI, procedural WebAudio, AABB + floor pads, reduced-motion.
 
 ## Stack
 

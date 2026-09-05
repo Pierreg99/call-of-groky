@@ -66,7 +66,7 @@ export class GameRenderer {
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.02;
+    this.renderer.toneMappingExposure = 0.88;
     this.renderer.shadowMap.enabled = this.quality.shadows;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -76,8 +76,9 @@ export class GameRenderer {
     }
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x090c12);
-    this.scene.fog = new THREE.FogExp2(0x0b1018, 0.016);
+    this.scene.background = new THREE.Color(0x06080c);
+    // Fog density ~ engagement: readable at shoot range (~11m), soft falloff past lose (~22m)
+    this.scene.fog = new THREE.FogExp2(0x06080c, 0.0065);
 
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.08, 220);
     this.camera.rotation.order = 'YXZ';
@@ -98,8 +99,8 @@ export class GameRenderer {
       this.bloomPass = new UnrealBloomPass(
         new THREE.Vector2(window.innerWidth, window.innerHeight),
         this.quality.bloomStrength,
-        0.55,
-        0.82,
+        0.4,
+        this.quality.bloomThreshold,
       );
       this.composer.addPass(this.bloomPass);
     }
@@ -111,7 +112,7 @@ export class GameRenderer {
 
     this.vignettePass = new ShaderPass(VignetteShader);
     const vig = this.reducedMotion ? this.quality.vignetteStrength * 0.35 : this.quality.vignetteStrength;
-    this.vignettePass.uniforms['offset'].value = 0.85;
+    this.vignettePass.uniforms['offset'].value = 0.95;
     this.vignettePass.uniforms['darkness'].value = vig;
     this.composer.addPass(this.vignettePass);
 
@@ -157,6 +158,7 @@ export class GameRenderer {
     this.renderer.shadowMap.enabled = settings.shadows;
     if (this.bloomPass) {
       this.bloomPass.strength = settings.bloom ? settings.bloomStrength : 0;
+      this.bloomPass.threshold = settings.bloomThreshold;
       this.bloomPass.enabled = settings.bloom;
     }
     if (this.ssaoPass) this.ssaoPass.enabled = settings.ssao;

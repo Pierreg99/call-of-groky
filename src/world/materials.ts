@@ -214,32 +214,50 @@ export function createFloorMaterial(): THREE.MeshStandardMaterial {
   const map = makeNoiseTexture(128, (x, y) => {
     const tile = (Math.floor(x / 16) + Math.floor(y / 16)) % 2;
     const n = fbm(x * 0.15, y * 0.15) * 22;
-    const base = tile ? 52 : 44;
-    const v = base + n;
-    const grit = hash(x, y) * 12;
-    return [v + grit * 0.2, v, v + 5];
+    const grout = x % 16 < 1 || y % 16 < 1 ? -14 : 0;
+    const stain = fbm(x * 0.05 + 2, y * 0.05 + 4) > 0.68 ? -10 : 0;
+    const base = tile ? 48 : 38;
+    const v = base + n + grout + stain;
+    const grit = hash(x, y) * 14;
+    return [v + grit * 0.15, v - 2, v + 4];
   });
-  map.repeat.set(8, 8);
-  const normalMap = makeNormalMap(128, 1.8);
-  normalMap.repeat.set(8, 8);
+  map.repeat.set(10, 10);
+  const normalMap = makeNormalMap(128, 2.1);
+  normalMap.repeat.set(10, 10);
   const rough = makeNoiseTexture(
     64,
     (x, y) => {
-      const v = 160 + hash(x, y) * 60;
+      const seam = x % 16 < 1 || y % 16 < 1 ? 40 : 0;
+      const v = 170 + hash(x, y) * 55 + seam;
       return [v, v, v];
     },
     THREE.NoColorSpace,
   );
-  rough.repeat.set(8, 8);
+  rough.repeat.set(10, 10);
+  const ao = makeNoiseTexture(
+    64,
+    (x, y) => {
+      // Soft corner darkening per tile for fake AO
+      const fx = (x % 16) / 16;
+      const fy = (y % 16) / 16;
+      const edge = Math.min(fx, 1 - fx, fy, 1 - fy);
+      const v = 140 + edge * 90 + hash(x, y) * 15;
+      return [v, v, v];
+    },
+    THREE.NoColorSpace,
+  );
+  ao.repeat.set(10, 10);
   return new THREE.MeshStandardMaterial({
-    color: 0x353940,
+    color: 0x2c3036,
     map,
     roughnessMap: rough,
+    aoMap: ao,
+    aoMapIntensity: 0.85,
     normalMap,
-    normalScale: new THREE.Vector2(0.45, 0.45),
-    roughness: 0.88,
-    metalness: 0.1,
-    envMapIntensity: 0.35,
+    normalScale: new THREE.Vector2(0.55, 0.55),
+    roughness: 0.9,
+    metalness: 0.08,
+    envMapIntensity: 0.28,
   });
 }
 

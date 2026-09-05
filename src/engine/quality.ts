@@ -11,6 +11,7 @@ export interface QualitySettings {
   postAA: 'none' | 'fxaa' | 'smaa';
   bloom: boolean;
   bloomStrength: number;
+  bloomThreshold: number;
   ssao: boolean;
   chromatic: boolean;
   vignetteStrength: number;
@@ -37,16 +38,18 @@ export function settingsFor(
       return {
         preset,
         pixelRatio: Math.min(dpr, 1),
-        shadowMapSize: 1024,
+        // Loop 3 gate: low ShadowMap ≤512
+        shadowMapSize: 512,
         shadows: true,
         antialias: false,
         maxLights: 4,
         postAA: 'fxaa',
         bloom: false,
         bloomStrength: 0,
+        bloomThreshold: 0.9,
         ssao: false,
         chromatic: false,
-        vignetteStrength: 0.45,
+        vignetteStrength: 0.5,
       };
     case 'high':
       return {
@@ -58,10 +61,12 @@ export function settingsFor(
         maxLights: 8,
         postAA: 'smaa',
         bloom: true,
-        bloomStrength: 0.22,
+        // Punchier, less milk: lower strength + higher threshold
+        bloomStrength: 0.14,
+        bloomThreshold: 0.88,
         ssao: true,
         chromatic: true,
-        vignetteStrength: 0.7,
+        vignetteStrength: 0.75,
       };
     default:
       return {
@@ -73,10 +78,11 @@ export function settingsFor(
         maxLights: 6,
         postAA: 'smaa',
         bloom: true,
-        bloomStrength: 0.16,
+        bloomStrength: 0.11,
+        bloomThreshold: 0.86,
         ssao: false,
         chromatic: true,
-        vignetteStrength: 0.6,
+        vignetteStrength: 0.65,
       };
   }
 }

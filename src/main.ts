@@ -29,7 +29,7 @@ if (!gfx.camera.parent) {
 const effects = new CombatEffects(gfx.scene);
 const weapon = new Rifle(gfx.camera, effects);
 weapon.setMotionScale(gfx.motionScale);
-const enemies = createEnemies(arena.spawnPoints, arena.colliders, 4);
+const enemies = createEnemies(arena.spawnPoints, arena.colliders, arena.coverPoints, 4);
 for (const e of enemies) gfx.scene.add(e.mesh);
 
 const worldTargets: THREE.Object3D[] = [];
@@ -134,7 +134,9 @@ function frame(): void {
   effects.update(dt);
 
   const playerAlive = player.state.health > 0;
-  for (const e of enemies) e.update(dt, elapsed, pos, playerAlive);
+  if (!__CAPTURE__) {
+    for (const e of enemies) e.update(dt, elapsed, pos, playerAlive);
+  }
 
   hud.setFiring(firing && player.isLocked);
   hud.update(dt);
@@ -155,10 +157,16 @@ if (__CAPTURE__) {
   if (__CAPTURE__ === 'mid') {
     player.object.position.set(0, 1.7, 6);
     gfx.camera.rotation.set(-0.08, 0.35, 0);
+    if (enemies[0]) {
+      enemies[0].mesh.position.set(4.5, 0, 1.5);
+      enemies[0].mesh.rotation.y = -0.8;
+      enemies[0].state = 'patrol';
+    }
   }
   if (__CAPTURE__ === 'combat') {
-    player.object.position.set(4, 1.7, 6);
-    gfx.camera.rotation.set(-0.12, 0.05, 0);
+    // Camera looks -Z: place soldiers in front (lower Z)
+    player.object.position.set(4.0, 1.65, 8.5);
+    gfx.camera.rotation.set(-0.06, 0.08, 0);
   }
   if (__CAPTURE__ === 'hud') {
     player.object.position.set(2, 1.7, 4);
@@ -171,9 +179,20 @@ if (__CAPTURE__) {
     for (const e of enemies) e.update(dt, elapsed, player.object.position, true);
   }
   if (__CAPTURE__ === 'combat' && enemies[0]) {
-    enemies[0].mesh.position.set(5.2, 0, 9.5);
-    enemies[0].mesh.rotation.y = Math.PI;
+    // In front of camera (camera at z=8.5 looking -Z)
+    enemies[0].mesh.position.set(4.2, 0, 5.0);
+    enemies[0].mesh.rotation.y = 0; // face +Z toward camera
     enemies[0].state = 'shoot';
+    if (enemies[1]) {
+      enemies[1].mesh.position.set(6.0, 0, 4.2);
+      enemies[1].mesh.rotation.y = 0.35;
+      enemies[1].state = 'cover';
+    }
+    if (enemies[2]) {
+      enemies[2].mesh.position.set(2.4, 0, 3.5);
+      enemies[2].mesh.rotation.y = -0.4;
+      enemies[2].state = 'chase';
+    }
   }
   (window as unknown as { __COG_READY__?: boolean }).__COG_READY__ = true;
 }
@@ -181,7 +200,7 @@ if (__CAPTURE__) {
 requestAnimationFrame(frame);
 
 console.info(
-  `%cCall of Groky%c loop2 quality=${gfx.quality.preset} aa=${gfx.quality.postAA} bloom=${gfx.quality.bloom} ssao=${gfx.quality.ssao}`,
+  `%cCall of Groky%c loop3 quality=${gfx.quality.preset} aa=${gfx.quality.postAA} bloom=${gfx.quality.bloom} ssao=${gfx.quality.ssao}`,
   'color:#5ce1ff;font-weight:bold',
   'color:#8899aa',
 );
