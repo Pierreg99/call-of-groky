@@ -4,6 +4,22 @@
 
 Artifact-Gate (screenshots + green build + Pages) is the deliverable bar. **Do not claim CoD PASS.**
 
+## improve/compare-boty (2026-09-05) — critic-honest
+
+This branch ports Boty systems into Groky. It does **not** reopen Ship-Gate or CoD.
+
+| Claim | Verdict |
+|-------|---------|
+| cannon-es capsule | Incremental physics. Not a Havok/IW character controller. |
+| Modular pieces | Greybox extraction (`hangar`/`bunker`/`cover`/…). Not a new art pass. |
+| Film grain + crit HP | HUD/feel only. Does not change lighting/materials vs CoD. |
+| Search FSM / haptics / procedural-only | **Not ported.** Do not claim feature-complete vs Boty. |
+| CoD PASS | **Still No.** |
+| Browser-AAA Ship-Gate | **GO** unchanged (User Accept / SwiftShader-only). |
+
+See [`docs/COMPARE_BOTY.md`](./docs/COMPARE_BOTY.md) and [`IMPROVE_NOTES.md`](./IMPROVE_NOTES.md).
+
+
 **User override content loops** — Critic recommended stop; user instructed continue.
 
 ### Ship-Gate / S5 (User Accept)
