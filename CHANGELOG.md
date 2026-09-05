@@ -1,3 +1,10 @@
+## 0.1.1 — Touch controls fix
+
+- Stronger mobile detection + `?touch=1` force / `?touch=0` off
+- Look pad leaves Fire/ADS cluster free; move zone respects safe areas
+- Higher touch look sensitivity, joystick deadzone, iOS scroll lock while playing
+- `viewport-fit=cover`; touch overlay z-index above HUD chrome
+
 # Changelog
 
 All notable changes to **Call of Groky** are documented in this file.

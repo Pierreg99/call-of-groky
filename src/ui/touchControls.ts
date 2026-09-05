@@ -15,13 +15,29 @@ export interface TouchControlHandlers {
 /** True when the device prefers touch / coarse pointer (show overlay). */
 export function prefersTouchControls(): boolean {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  try {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get('touch') === '1' || q.get('touch') === 'true') return true;
+    if (q.get('touch') === '0' || q.get('touch') === 'false') return false;
+  } catch {
+    /* ignore */
+  }
   const coarse =
     typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
   const noHover =
     typeof window.matchMedia === 'function' && window.matchMedia('(hover: none)').matches;
-  const mtp = (navigator.maxTouchPoints ?? 0) > 0;
+  const touchPoints = navigator.maxTouchPoints ?? 0;
   const ontouch = 'ontouchstart' in window;
-  return coarse || (mtp && noHover) || (ontouch && mtp);
+  const narrow =
+    Math.min(window.screen?.width ?? window.innerWidth, window.screen?.height ?? window.innerHeight) <=
+    920;
+  // Coarse pointer, phone/tablet touch, or any touchscreen on a narrow display.
+  return (
+    coarse ||
+    (touchPoints > 0 && noHover) ||
+    (ontouch && touchPoints > 0) ||
+    (touchPoints > 0 && narrow)
+  );
 }
 
 const ICONS = {
@@ -241,6 +257,7 @@ export class TouchControls {
   private onJoyDown = (e: PointerEvent): void => {
     if (this.joyPointerId !== null || e.button > 0) return;
     e.preventDefault();
+    e.stopPropagation();
     this.joyPointerId = e.pointerId;
     this.joyActive = true;
     this.joyOriginX = e.clientX;
@@ -264,8 +281,18 @@ export class TouchControls {
     const cx = dx * clamped;
     const cy = dy * clamped;
     this.stickKnob.style.transform = `translate(calc(-50% + ${cx}px), calc(-50% + ${cy}px))`;
-    const nx = cx / max;
-    const ny = cy / max;
+    let nx = cx / max;
+    let ny = cy / max;
+    const mag = Math.hypot(nx, ny);
+    if (mag < 0.12) {
+      nx = 0;
+      ny = 0;
+    } else if (mag > 0) {
+      // Remap outer ring so 0.12..1 → 0..1
+      const remapped = (mag - 0.12) / 0.88;
+      nx = (nx / mag) * remapped;
+      ny = (ny / mag) * remapped;
+    }
     this.handlers.onMove(nx, -ny);
   };
 
@@ -287,6 +314,7 @@ export class TouchControls {
     const t = e.target as HTMLElement | null;
     if (t?.closest?.('.touch-actions')) return;
     e.preventDefault();
+    e.stopPropagation();
     this.lookPointerId = e.pointerId;
     this.lookLastX = e.clientX;
     this.lookLastY = e.clientY;
@@ -300,7 +328,9 @@ export class TouchControls {
     const dy = e.clientY - this.lookLastY;
     this.lookLastX = e.clientX;
     this.lookLastY = e.clientY;
-    this.handlers.onLook(dx, dy);
+    // Finger drags are coarse vs mouse movementX — boost + drop sub-pixel jitter.
+    if (dx * dx + dy * dy < 0.25) return;
+    this.handlers.onLook(dx * 1.85, dy * 1.85);
   };
 
   private onLookUp = (e: PointerEvent): void => {

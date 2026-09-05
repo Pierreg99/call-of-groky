@@ -1,7 +1,7 @@
 {
   "name": "call-of-groky",
-  "version": "0.1.0",
-  "description": "Call of Groky — cinematic Three.js FPS greybox scaffold",
+  "version": "0.1.1",
+  "description": "Call of Groky \u2014 cinematic Three.js FPS greybox scaffold",
   "type": "module",
   "scripts": {
     "dev": "vite",

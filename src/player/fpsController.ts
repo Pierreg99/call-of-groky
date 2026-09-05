@@ -193,11 +193,14 @@ export class FpsController {
   applyTouchLook(dx: number, dy: number): void {
     if (!this.touchActive) return;
     const cam = this.object;
-    const speed = 0.002 * this.controls.pointerSpeed;
+    // Touch pixels ≠ mouse movementX; keep ADS scale via pointerSpeed.
+    const speed = 0.00255 * this.controls.pointerSpeed;
     this.lookEuler.setFromQuaternion(cam.quaternion);
     this.lookEuler.y -= dx * speed;
     this.lookEuler.x -= dy * speed;
     this.lookEuler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.lookEuler.x));
+    // Preserve cinematic strafe roll applied in update()
+    this.lookEuler.z = this.roll;
     cam.quaternion.setFromEuler(this.lookEuler);
     this.sway.x += dx * 0.00045;
     this.sway.y += dy * 0.00045;

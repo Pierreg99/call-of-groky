@@ -318,6 +318,11 @@ async function boot(): Promise<void> {
       }
       startBtn.textContent = 'TAP TO START';
       document.documentElement.classList.add('touch-ui');
+      // iOS/Android: stop document scroll/bounce while using virtual sticks
+      const blockScroll = (e: TouchEvent) => {
+        if (player.isTouchActive && !settingsOpen) e.preventDefault();
+      };
+      document.addEventListener('touchmove', blockScroll, { passive: false });
     }
 
     startBtn.addEventListener('click', () => {
