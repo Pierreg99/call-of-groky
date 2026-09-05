@@ -14,6 +14,7 @@ import { gameAudio } from './audio/sfx';
 import { settingsFor } from './engine/quality';
 import { TouchControls, prefersTouchControls } from './ui/touchControls';
 import { loadWorldPbrTextures } from './world/materials';
+import { PhysicsWorld } from './engine/physics';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
@@ -93,6 +94,13 @@ async function boot(): Promise<void> {
   player.setSensitivity(persisted.sensitivity);
   player.setColliders(arena.colliders);
   player.setFloors(arena.floors);
+  // cannon-es player capsule + static world (Boty-parity physics)
+  const physics = new PhysicsWorld();
+  physics.addGroundPlane(40);
+  physics.addStaticBoxes(arena.colliders);
+  physics.addFloorPads(arena.floors);
+  const playerBody = physics.addPlayerCapsule(0.35, 1.7, player.object.position);
+  player.attachPhysics(physics, playerBody);
   gfx.scene.add(player.object);
 
   if (!gfx.camera.parent) {
@@ -156,7 +164,7 @@ async function boot(): Promise<void> {
       e.setShotCallback((ev) => {
         if (!player.isLocked || player.state.health <= 0) return;
         player.takeDamage(ev.damage);
-        hud.flashDamage();
+        hud.flashDamageFrom(gfx.camera, player.object.position, ev.from);
         syncHud();
         gameAudio.play('hit');
       });
@@ -505,10 +513,6 @@ async function boot(): Promise<void> {
 
     if (killPunch > 0) {
       killPunch = Math.max(0, killPunch - rawDt * 2.2);
-      const kick = killPunch * 4 * (1 - loadout.active.adsBlend * 0.85);
-      // Compose on weapon hip→ADS FOV (do not fight ADS lerp)
-      gfx.camera.fov = loadout.active.getTargetFov() + kick;
-      gfx.camera.updateProjectionMatrix();
     }
 
     const pos = player.object.position;
@@ -584,7 +588,20 @@ async function boot(): Promise<void> {
 
     player.getBobOffset(bob);
     if (gfx.motionScale < 1) bob.multiplyScalar(gfx.motionScale);
+    loadout.setLookSway(player.lookVel.x, player.lookVel.y);
     loadout.update(dt, bob, player.isLocked);
+    // Subtle eye bob — applied for render only (do not overwrite world Y)
+    const eyeBob =
+      player.getEyeBobY() * gfx.motionScale * (1 - loadout.active.adsBlend * 0.85);
+    {
+      const kick = killPunch * 4 * (1 - loadout.active.adsBlend * 0.85);
+      const sprintAdd = player.sprintFovBlend * 6 * (1 - loadout.active.adsBlend * 0.9);
+      const targetFov = loadout.active.getTargetFov() + kick + sprintAdd;
+      if (Math.abs(gfx.camera.fov - targetFov) > 0.02) {
+        gfx.camera.fov = targetFov;
+        gfx.camera.updateProjectionMatrix();
+      }
+    }
     effects.update(dt);
 
     const playerAlive = player.state.health > 0;
@@ -613,7 +630,10 @@ async function boot(): Promise<void> {
       p.mesh.rotation.y = elapsed * 0.6;
     }
 
-    gfx.render();
+    const camBaseY = player.object.position.y;
+    player.object.position.y = camBaseY + eyeBob;
+    gfx.render(rawDt);
+    player.object.position.y = camBaseY;
     requestAnimationFrame(frame);
   }
 

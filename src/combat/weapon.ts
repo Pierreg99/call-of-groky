@@ -482,6 +482,8 @@ export class Firearm {
   private motionScale = 1;
   private wasAds = false;
   private idlePhase = 0;
+  /** External look velocity for viewmodel inertia (from FpsController.lookVel). */
+  private lookSway = new THREE.Vector2();
   private active = true;
   private switchCooldown = 0;
   private switchAnim = 0;
@@ -542,6 +544,11 @@ export class Firearm {
 
   setMotionScale(scale: number): void {
     this.motionScale = scale;
+  }
+
+  /** Feed camera look velocity for hip sway / ADS micro-drift. */
+  setLookSway(x: number, y: number): void {
+    this.lookSway.set(x, y);
   }
 
   setAds(on: boolean): void {
@@ -713,17 +720,12 @@ export class Firearm {
     this.switchCooldown = Math.max(0, this.switchCooldown - dt);
 
     const adsTarget = this.ads && !this.reloading && this.switchCooldown <= 0 ? 1 : 0;
-    // Smooth but decisive ADS blend (~120–160ms feel)
-    this.adsBlend = THREE.MathUtils.damp(this.adsBlend, adsTarget, 16, dt);
+    // Smooth but decisive ADS blend (~100–140ms feel) with ease toward optic
+    this.adsBlend = THREE.MathUtils.damp(this.adsBlend, adsTarget, 18, dt);
     if (this.ads && !this.wasAds) gameAudio.play('ads');
     this.wasAds = this.ads;
 
-    // Proper FOV lerp every frame (kill-punch may add on top in main)
-    const fov = THREE.MathUtils.lerp(this.stats.hipFov, this.stats.adsFov, this.adsBlend);
-    if (Math.abs(this.camera.fov - fov) > 0.01) {
-      this.camera.fov = fov;
-      this.camera.updateProjectionMatrix();
-    }
+    // FOV owned by main (hip→ADS + sprint widen + kill punch)
 
     this.idlePhase += dt;
 
@@ -746,9 +748,12 @@ export class Firearm {
       }
     }
 
-    this.recoilPitch = THREE.MathUtils.damp(this.recoilPitch, 0, this.stats.kind === 'smg' ? 14 : 10, dt);
-    this.recoilYaw = THREE.MathUtils.damp(this.recoilYaw, 0, this.stats.kind === 'smg' ? 12 : 10, dt);
-    this.kick = THREE.MathUtils.damp(this.kick, 0, this.stats.kind === 'smg' ? 18 : 14, dt);
+    // Asymmetric recovery: pitch snaps back a touch faster than yaw (rifle feel)
+    this.recoilPitch = THREE.MathUtils.damp(this.recoilPitch, 0, this.stats.kind === 'smg' ? 16 : 12, dt);
+    this.recoilYaw = THREE.MathUtils.damp(this.recoilYaw, 0, this.stats.kind === 'smg' ? 11 : 8.5, dt);
+    this.kick = THREE.MathUtils.damp(this.kick, 0, this.stats.kind === 'smg' ? 20 : 15, dt);
+    this.lookSway.x = THREE.MathUtils.damp(this.lookSway.x, 0, 8, dt);
+    this.lookSway.y = THREE.MathUtils.damp(this.lookSway.y, 0, 8, dt);
 
     if (isLocked) {
       this.camera.rotation.x += this.recoilPitch * 0.35;
@@ -789,19 +794,26 @@ export class Firearm {
       this.switchAnim = Math.max(0, this.switchAnim - dt * 2.6);
       const raise = this.switchAnim * 0.28;
       const roll = this.switchAnim * 0.35;
+      const lookSx = this.lookSway.x * THREE.MathUtils.lerp(0.12, 0.02, this.adsBlend);
+      const lookSy = this.lookSway.y * THREE.MathUtils.lerp(0.1, 0.015, this.adsBlend);
+      // Ease ADS pose (smoothstep-ish via adsBlend already damped)
+      const ax = THREE.MathUtils.lerp(hipX, adsX, this.adsBlend);
+      const ay = THREE.MathUtils.lerp(hipY, adsY, this.adsBlend);
+      const az = THREE.MathUtils.lerp(hipZ, adsZ, this.adsBlend);
       this.viewModel.position.set(
-        THREE.MathUtils.lerp(hipX, adsX, this.adsBlend) + this.bob.x * 1.55 * bobScale + breathX,
-        THREE.MathUtils.lerp(hipY, adsY, this.adsBlend) + this.bob.y * bobScale + breathY - raise,
-        THREE.MathUtils.lerp(hipZ, adsZ, this.adsBlend) - this.kick * this.stats.kickAmount,
+        ax + this.bob.x * 1.7 * bobScale + breathX - lookSx,
+        ay + this.bob.y * bobScale + breathY - raise - lookSy * 0.5,
+        az - this.kick * this.stats.kickAmount - Math.abs(lookSx) * 0.04,
       );
-      // Near-zero roll/yaw while ADS so holo/red-dot stays centered
+      // Near-zero roll/yaw while ADS so holo/red-dot stays centered; hip gets look inertia
       const adsStill = 1 - this.adsBlend;
       this.viewModel.rotation.set(
-        this.kick * (this.stats.kind === 'smg' ? 0.04 : 0.05) * (0.35 + 0.65 * adsStill) +
-          this.bob.y * 0.35 * bobScale +
-          this.switchAnim * 0.2,
-        (-this.bob.x * 0.95 * bobScale + breathX * 2) * adsStill - this.switchAnim * 0.12,
-        (this.bob.x * 0.55 * bobScale - this.kick * 0.02) * adsStill + roll,
+        this.kick * (this.stats.kind === 'smg' ? 0.045 : 0.055) * (0.3 + 0.7 * adsStill) +
+          this.bob.y * 0.4 * bobScale +
+          this.switchAnim * 0.2 +
+          lookSy * 0.35 * adsStill,
+        (-this.bob.x * 1.05 * bobScale + breathX * 2 - lookSx * 0.8) * adsStill - this.switchAnim * 0.12,
+        (this.bob.x * 0.6 * bobScale - this.kick * 0.025 - lookSx * 0.25) * adsStill + roll,
       );
     }
 
@@ -843,6 +855,10 @@ export class WeaponLoadout {
 
   setMotionScale(scale: number): void {
     for (const w of this.weapons) w.setMotionScale(scale);
+  }
+
+  setLookSway(x: number, y: number): void {
+    for (const w of this.weapons) w.setLookSway(x, y);
   }
 
   setWorldTargets(objects: THREE.Object3D[], enemies: EnemyTarget[]): void {

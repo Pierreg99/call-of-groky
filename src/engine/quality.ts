@@ -15,6 +15,8 @@ export interface QualitySettings {
   ssao: boolean;
   chromatic: boolean;
   vignetteStrength: number;
+  filmGrain: boolean;
+  filmGrainAmount: number;
 }
 
 export function detectQuality(): QualitySettings {
@@ -51,6 +53,8 @@ export function settingsFor(
         ssao: true,
         chromatic: true,
         vignetteStrength: 0.5,
+        filmGrain: true,
+        filmGrainAmount: 0.022,
       };
     case 'high':
       return {
@@ -68,6 +72,8 @@ export function settingsFor(
         ssao: true,
         chromatic: true,
         vignetteStrength: 0.75,
+        filmGrain: true,
+        filmGrainAmount: 0.04,
       };
     default:
       return {
@@ -84,6 +90,8 @@ export function settingsFor(
         ssao: true,
         chromatic: true,
         vignetteStrength: 0.65,
+        filmGrain: true,
+        filmGrainAmount: 0.03,
       };
   }
 }
