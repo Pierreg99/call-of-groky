@@ -24,16 +24,24 @@ interface Shell {
   life: number;
 }
 
+interface Blood {
+  mesh: THREE.Mesh;
+  life: number;
+  maxLife: number;
+}
+
 export class CombatEffects {
   private readonly scene: THREE.Scene;
   private readonly tracers: Tracer[] = [];
   private readonly sparks: Spark[] = [];
   private readonly decals: Decal[] = [];
   private readonly shells: Shell[] = [];
+  private readonly bloods: Blood[] = [];
   private readonly tracerMat: THREE.MeshBasicMaterial;
   private readonly decalMat: THREE.MeshBasicMaterial;
   private readonly sparkMat: THREE.PointsMaterial;
   private readonly shellMat: THREE.MeshStandardMaterial;
+  private readonly bloodMat: THREE.MeshBasicMaterial;
   private readonly tmp = new THREE.Vector3();
   private readonly tmp2 = new THREE.Vector3();
   private readonly up = new THREE.Vector3(0, 1, 0);
@@ -62,6 +70,14 @@ export class CombatEffects {
       opacity: 1,
       depthWrite: false,
       sizeAttenuation: true,
+    });
+    this.bloodMat = new THREE.MeshBasicMaterial({
+      color: 0xb01028,
+      transparent: true,
+      opacity: 0.72,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -3,
     });
     this.shellMat = new THREE.MeshStandardMaterial({
       color: 0xc9a227,
@@ -137,6 +153,57 @@ export class CombatEffects {
     this.shells.push({ mesh, vel, ang, life: 1.4 });
   }
 
+
+  /** Stylized impact splash — crimson blot, not gore-heavy. */
+  spawnBlood(point: THREE.Vector3, normal: THREE.Vector3): void {
+    const n = 3 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < n; i++) {
+      const r = 0.04 + Math.random() * 0.09;
+      const mesh = new THREE.Mesh(new THREE.CircleGeometry(r, 7), this.bloodMat.clone());
+      const jitter = new THREE.Vector3(
+        (Math.random() - 0.5) * 0.15,
+        (Math.random() - 0.5) * 0.12,
+        (Math.random() - 0.5) * 0.15,
+      );
+      mesh.position.copy(point).addScaledVector(normal, 0.02 + i * 0.005).add(jitter);
+      mesh.lookAt(this.tmp.copy(mesh.position).add(normal));
+      mesh.rotation.z = Math.random() * Math.PI;
+      this.scene.add(mesh);
+      this.bloods.push({ mesh, life: 4 + Math.random() * 3, maxLife: 5 });
+    }
+    // Soft mist points
+    const count = 8;
+    const positions = new Float32Array(count * 3);
+    const vel = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      positions[i * 3] = point.x;
+      positions[i * 3 + 1] = point.y;
+      positions[i * 3 + 2] = point.z;
+      const dir = new THREE.Vector3(
+        normal.x + (Math.random() - 0.5) * 1.2,
+        normal.y + Math.random() * 0.9,
+        normal.z + (Math.random() - 0.5) * 1.2,
+      ).normalize();
+      const sp = 1.2 + Math.random() * 2.5;
+      vel[i * 3] = dir.x * sp;
+      vel[i * 3 + 1] = dir.y * sp;
+      vel[i * 3 + 2] = dir.z * sp;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const mat = new THREE.PointsMaterial({
+      color: 0xff3355,
+      size: 0.045,
+      transparent: true,
+      opacity: 0.75,
+      depthWrite: false,
+      sizeAttenuation: true,
+    });
+    const pts = new THREE.Points(geo, mat);
+    this.scene.add(pts);
+    this.sparks.push({ mesh: pts, vel, life: 0.28 });
+  }
+
   update(dt: number): void {
     for (let i = this.tracers.length - 1; i >= 0; i--) {
       const t = this.tracers[i];
@@ -185,6 +252,21 @@ export class CombatEffects {
         d.mesh.geometry.dispose();
         (d.mesh.material as THREE.Material).dispose();
         this.decals.splice(i, 1);
+      }
+    }
+
+
+    for (let i = this.bloods.length - 1; i >= 0; i--) {
+      const b = this.bloods[i];
+      b.life -= dt;
+      if (b.life < 1.2) {
+        (b.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, (b.life / 1.2) * 0.72);
+      }
+      if (b.life <= 0) {
+        this.scene.remove(b.mesh);
+        b.mesh.geometry.dispose();
+        (b.mesh.material as THREE.Material).dispose();
+        this.bloods.splice(i, 1);
       }
     }
 

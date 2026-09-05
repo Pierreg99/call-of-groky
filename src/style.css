@@ -361,3 +361,51 @@ html.reduced-motion #vignette.ads {
 }
 
 html.capture-mode #overlay { display: none !important; }
+
+/* Loop 4 — killcam-lite + FPS */
+#killcam {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  transform: translate(-50%, -50%) scale(0.85);
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 90ms linear, transform 120ms ease-out;
+  z-index: 20;
+}
+#killcam.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+#killcam .kc-label {
+  font-size: 13px;
+  letter-spacing: 0.35em;
+  color: var(--accent);
+  text-shadow: 0 0 12px rgba(92, 225, 255, 0.55);
+  font-weight: 700;
+}
+#killcam-name {
+  margin-top: 6px;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #fff;
+  text-shadow: 0 2px 18px rgba(255, 59, 74, 0.55), 0 0 2px #000;
+}
+#fps-counter {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: rgba(180, 220, 255, 0.85);
+  background: rgba(0, 0, 0, 0.45);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(92, 225, 255, 0.25);
+  z-index: 25;
+  pointer-events: none;
+}
+html.capture-mode #fps-counter { display: none !important; }
+html.capture-mode #killcam { display: none !important; }

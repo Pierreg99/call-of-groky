@@ -1,17 +1,46 @@
 import * as THREE from 'three';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 /**
- * Stronger PMREM bounce than stock RoomEnvironment:
- * dark concrete-toned room + cyan/orange neon panels so PBR metal
- * picks up faction-colored specular instead of flat studio white.
+ * Real HDRI (Poly Haven Empty Warehouse 01, CC0) via RGBELoader + PMREM.
+ * Stronger indirect bounce than Loop 3 RoomEnvironment hack.
+ * Falls back to neon-tinted room PMREM if the HDR fails to load.
  */
-export function applyEnvironment(renderer: THREE.WebGLRenderer, scene: THREE.Scene): THREE.Texture {
+export async function applyEnvironment(
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+): Promise<THREE.Texture> {
   const pmrem = new THREE.PMREMGenerator(renderer);
   pmrem.compileEquirectangularShader();
 
+  const base = import.meta.env.BASE_URL || '/';
+  const hdrUrl = `${base}hdri/empty_warehouse_01_1k.hdr`;
+
+  try {
+    const loader = new RGBELoader();
+    const hdr = await Promise.race([
+      loader.loadAsync(hdrUrl),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('HDRI timeout')), 8000)),
+    ]);
+    hdr.mapping = THREE.EquirectangularReflectionMapping;
+    const env = pmrem.fromEquirectangular(hdr).texture;
+    hdr.dispose();
+    scene.environment = env;
+    // Bake feel: stronger indirect so metal / armor pick up warehouse bounce
+    scene.environmentIntensity = 1.15;
+    // Keep fog engagement-tuned solid background (no full skybox wash)
+    pmrem.dispose();
+    console.info('[env] Poly Haven empty_warehouse_01_1k HDRI + PMREM');
+    return env;
+  } catch (err) {
+    console.warn('[env] HDRI load failed, falling back to RoomEnvironment', err);
+    return applyRoomFallback(pmrem, scene);
+  }
+}
+
+function applyRoomFallback(pmrem: THREE.PMREMGenerator, scene: THREE.Scene): THREE.Texture {
   const envScene = new RoomEnvironment() as unknown as THREE.Scene;
-  // Dim the baked room lights if present, then add punch panels
   envScene.traverse((o) => {
     const l = o as THREE.Light;
     if ((l as THREE.Light).isLight) {
@@ -25,7 +54,6 @@ export function applyEnvironment(renderer: THREE.WebGLRenderer, scene: THREE.Sce
     }
   });
 
-  // Neon bounce panels (captured into PMREM)
   const cyan = new THREE.MeshStandardMaterial({
     color: 0x0a1218,
     emissive: 0x5ce1ff,
@@ -46,22 +74,10 @@ export function applyEnvironment(renderer: THREE.WebGLRenderer, scene: THREE.Sce
   panelO.position.set(3.2, 1.2, 1.5);
   panelO.rotation.y = -0.8;
   envScene.add(panelO);
-  const floorGlow = new THREE.Mesh(
-    new THREE.PlaneGeometry(6, 6),
-    new THREE.MeshStandardMaterial({
-      color: 0x101418,
-      emissive: 0x1a3040,
-      emissiveIntensity: 0.8,
-      roughness: 0.9,
-    }),
-  );
-  floorGlow.rotation.x = -Math.PI / 2;
-  floorGlow.position.y = -0.9;
-  envScene.add(floorGlow);
 
   const env = pmrem.fromScene(envScene, 0.05).texture;
   scene.environment = env;
-  scene.environmentIntensity = 0.55;
+  scene.environmentIntensity = 0.7;
   pmrem.dispose();
   return env;
 }

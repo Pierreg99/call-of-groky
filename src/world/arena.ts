@@ -300,10 +300,10 @@ export function buildArena(scene: THREE.Scene, shadowMapSize = 2048): ArenaBuild
   }
 
   // --- Lighting punch: darker ambient, hard key, cyan rim, tuned contact shadows ---
-  const hemi = new THREE.HemisphereLight(0x6a82a0, 0x0e0c0a, 0.28);
+  const hemi = new THREE.HemisphereLight(0x6a82a0, 0x0e0c0a, 0.18);
   scene.add(hemi);
 
-  const sun = new THREE.DirectionalLight(0xffe6c8, 2.85);
+  const sun = new THREE.DirectionalLight(0xffe6c8, 2.55);
   sun.position.set(20, 30, 12);
   sun.castShadow = true;
   sun.shadow.mapSize.set(shadowMapSize, shadowMapSize);

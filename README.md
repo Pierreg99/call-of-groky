@@ -1,6 +1,6 @@
 # Call of Groky
 
-Cinematic **Three.js** FPS greybox — **Loop 3** silhouette / lighting polish.
+Cinematic **Three.js** FPS greybox — **Loop 4** HDRI + CC0 glTF soldier polish.
 
 Not a Call of Duty clone. Premium-feeling WebGL arena shooter (Vite + TypeScript + Three.js r170+). Browser Three.js pushed harder; still **not** an IW-engine peer.
 
@@ -26,6 +26,7 @@ Production: Vite build to `dist/`, then Vite preview.
 | LMB | Fire |
 | RMB | ADS (FOV lerp) |
 | R | Reload |
+| F3 / ` | Toggle FPS counter |
 | Esc | Unlock pointer |
 
 ## Quality presets
@@ -40,35 +41,32 @@ Auto-detected from CPU cores / `deviceMemory`. Canvas MSAA off; AA is post.
 
 Vignette scales with preset. `prefers-reduced-motion: reduce` dampens recoil/bob, chromatic, and CSS vignette.
 
-## Loop 3 features
+## Loop 4 features
 
-- **Soldiers:** procedural low-poly helmet/armor/limb silhouettes with faction accents + contact blobs
-- **Rifle viewmodel:** stock / handguard / optic / muzzle-brake silhouette; breath + walk bob
-- **Lighting:** darker ambient, stronger key + cyan rim, neon-tinted PMREM; anti-milk bloom threshold
-- **Fog:** density tied to engagement range (readable mid-fight)
-- **Grounding:** floor AO/grout, oil/caution/scorch decals, prop contact shadows
-- **AI cover:** crates + nav cover points; duck / peek-fire when damaged
-- **Low preset:** ShadowMap ≤512
-
-## Loop 2 carry-forward
-
-Post stack (SSAO/bloom/SMAA), ADS, tracers/shells, patrol/chase/shoot AI, procedural WebAudio, AABB + floor pads, reduced-motion.
+- **HDRI:** Poly Haven Empty Warehouse 01 (CC0) via RGBELoader + PMREM; stronger indirect bounce
+- **Soldiers:** CC0 glTF male + assault rifle (~43KB); procedural fallback + faction accents
+- **Viewmodel:** procedural rifle with gloved hands; breath/walk bob
+- **Killcam-lite:** eliminate banner + timescale/FOV punch; stylized blood blotches
+- **Audio:** richer procedural WebAudio layers
+- **FPS:** on-screen counter toggle (F3)
+- **Fog:** engagement-tuned Exp2 (readable mid-fight)
 
 ## Stack
 
 - Vite 5 + TypeScript
-- Three.js ≥ 0.170 (PointerLockControls, EffectComposer, SMAA/FXAA, UnrealBloom, SSAO, RoomEnvironment)
+- Three.js ≥ 0.170 (PointerLockControls, EffectComposer, SMAA/FXAA, UnrealBloom, SSAO, RGBELoader, GLTFLoader)
 
 ## Project layout
 
 ```
 src/  engine player world combat enemies audio ui
-docs/shots/   Critic gate screenshots
+public/hdri  public/models
+docs/shots/  docs/credits/
 ```
 
 ## Screenshots
 
-See [`docs/shots/`](./docs/shots/).
+See [`docs/shots/`](./docs/shots/). Third-party credits: [`docs/credits/ATTRIBUTION.md`](./docs/credits/ATTRIBUTION.md).
 
 ## Honest gaps
 
@@ -76,4 +74,4 @@ See [`CRITIC.md`](./CRITIC.md). **Does not claim CoD visual parity.**
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT — see [LICENSE](./LICENSE). Third-party CC0 assets attributed in `docs/credits/ATTRIBUTION.md`.

@@ -179,6 +179,48 @@ function buildRifleViewModel(): {
   fgrip.position.set(0, -0.04, -0.32);
   root.add(fgrip);
 
+
+  // Gloved hands on viewmodel (silhouette polish) — visible from hip FOV
+  const gloveMat = new THREE.MeshStandardMaterial({
+    color: 0x1a222a,
+    roughness: 0.88,
+    metalness: 0.08,
+    envMapIntensity: 0.4,
+  });
+  // Right hand wrapping pistol grip (screen-right / lower)
+  const palmR = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.1, 0.055), gloveMat);
+  palmR.position.set(0.04, -0.12, 0.09);
+  palmR.rotation.set(0.55, 0.1, 0.15);
+  root.add(palmR);
+  for (let i = 0; i < 4; i++) {
+    const f = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.055, 0.016), gloveMat);
+    f.position.set(0.01 + i * 0.016, -0.175, 0.085);
+    f.rotation.x = 1.05;
+    root.add(f);
+  }
+  const thumbR = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.04, 0.016), gloveMat);
+  thumbR.position.set(0.07, -0.12, 0.06);
+  thumbR.rotation.set(0.3, 0, -0.8);
+  root.add(thumbR);
+  // Left support hand on handguard (forward / slightly left)
+  const palmL = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.085, 0.05), gloveMat);
+  palmL.position.set(-0.045, -0.035, -0.28);
+  palmL.rotation.set(0.35, 0.05, -0.2);
+  root.add(palmL);
+  for (let i = 0; i < 4; i++) {
+    const f = new THREE.Mesh(new THREE.BoxGeometry(0.013, 0.05, 0.014), gloveMat);
+    f.position.set(-0.055 + i * 0.015, -0.08, -0.29);
+    f.rotation.x = 0.85;
+    root.add(f);
+  }
+  const cuffL = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.055, 0.05), polymerMat);
+  cuffL.position.set(-0.04, -0.01, -0.2);
+  root.add(cuffL);
+  const cuffR = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.05, 0.045), polymerMat);
+  cuffR.position.set(0.04, -0.05, 0.14);
+  cuffR.rotation.x = 0.4;
+  root.add(cuffR);
+
   for (const c of root.children) {
     const mesh = c as THREE.Mesh;
     if (mesh.isMesh) {
@@ -392,6 +434,7 @@ export class Rifle {
 
     if (hitEnemy) {
       const killed = hitEnemy.applyDamage(this.stats.damage);
+      this.effects.spawnBlood(impactPoint, impactNormal);
       gameAudio.play('hit', {
         x: hitEnemy.mesh.position.x,
         y: hitEnemy.mesh.position.y + 1,
@@ -403,6 +446,7 @@ export class Rifle {
           y: hitEnemy.mesh.position.y + 1,
           z: hitEnemy.mesh.position.z,
         });
+        gameAudio.play('kill');
       }
       this.onHitEnemy?.(hitEnemy, killed);
     }

@@ -13,8 +13,11 @@ export class Hud {
   private readonly overlay: HTMLElement;
   private readonly damageFlash: HTMLElement;
   private readonly vignette: HTMLElement;
+  private readonly killcam: HTMLElement;
+  private readonly killcamName: HTMLElement;
   private hitmarkerTimer = 0;
   private damageTimer = 0;
+  private killcamTimer = 0;
 
   constructor() {
     this.healthFill = document.getElementById('health-fill')!;
@@ -28,6 +31,8 @@ export class Hud {
     this.overlay = document.getElementById('overlay')!;
     this.damageFlash = document.getElementById('damage-flash')!;
     this.vignette = document.getElementById('vignette')!;
+    this.killcam = document.getElementById('killcam')!;
+    this.killcamName = document.getElementById('killcam-name')!;
   }
 
   showOverlay(show: boolean): void {
@@ -68,6 +73,13 @@ export class Hud {
     this.damageTimer = 0.18;
   }
 
+  /** Killcam-lite banner punch */
+  showKillcam(name: string): void {
+    this.killcamName.textContent = `TARGET-${name}`;
+    this.killcam.classList.add('show');
+    this.killcamTimer = 1.15;
+  }
+
   pushKill(name: string): void {
     const el = document.createElement('div');
     el.className = 'item';
@@ -77,6 +89,7 @@ export class Hud {
     while (this.killFeed.children.length > 4) {
       this.killFeed.lastElementChild?.remove();
     }
+    this.showKillcam(name);
   }
 
   update(dt: number): void {
@@ -87,6 +100,10 @@ export class Hud {
     if (this.damageTimer > 0) {
       this.damageTimer -= dt;
       if (this.damageTimer <= 0) this.damageFlash.classList.remove('show');
+    }
+    if (this.killcamTimer > 0) {
+      this.killcamTimer -= dt;
+      if (this.killcamTimer <= 0) this.killcam.classList.remove('show');
     }
   }
 }

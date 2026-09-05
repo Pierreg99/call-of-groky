@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { gameAudio } from '../audio/sfx';
+import { cloneSoldier, type SoldierAssets } from './gltfAssets';
 
 export type EnemyState = 'patrol' | 'chase' | 'shoot' | 'cover' | 'dead';
 
@@ -186,6 +187,7 @@ export class EnemyTarget {
     colliders: THREE.Box3[],
     coverPoints: CoverPoint[] = [],
     health = 100,
+    assets: SoldierAssets | null = null,
   ) {
     this.id = id;
     this.health = health;
@@ -201,33 +203,6 @@ export class EnemyTarget {
     );
     this.patrolT = id * 0.37;
 
-    // Faction: hostile crimson / dark olive armor
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: 0x4a3532,
-      roughness: 0.78,
-      metalness: 0.12,
-      emissive: 0x1a0508,
-      emissiveIntensity: 0.15,
-      envMapIntensity: 0.45,
-    });
-    const armorMat = new THREE.MeshStandardMaterial({
-      color: 0x2a323c,
-      roughness: 0.42,
-      metalness: 0.65,
-      envMapIntensity: 0.85,
-    });
-    const helmetMat = new THREE.MeshStandardMaterial({
-      color: 0x3e4854,
-      roughness: 0.35,
-      metalness: 0.72,
-      envMapIntensity: 0.95,
-    });
-    const skinMat = new THREE.MeshStandardMaterial({
-      color: 0x6a5048,
-      roughness: 0.7,
-      metalness: 0.05,
-      envMapIntensity: 0.35,
-    });
     this.accentMat = new THREE.MeshStandardMaterial({
       color: 0x1a0508,
       emissive: 0xff3b4a,
@@ -235,31 +210,75 @@ export class EnemyTarget {
       roughness: 0.4,
       metalness: 0.2,
     });
-    const gunMat = new THREE.MeshStandardMaterial({
-      color: 0x14181c,
-      metalness: 0.85,
-      roughness: 0.35,
-      envMapIntensity: 1.0,
-    });
 
-    this.bodyMats.push(bodyMat, armorMat, helmetMat, skinMat, this.accentMat, gunMat);
-
-    const built = buildSoldierMesh(bodyMat, armorMat, helmetMat, skinMat, this.accentMat, gunMat);
-    this.muzzleLocal = built.muzzleLocal;
-    // Re-parent soldier parts into this.mesh
-    while (built.root.children.length) {
-      this.mesh.add(built.root.children[0]);
+    if (assets?.ok) {
+      const cloned = cloneSoldier(assets);
+      while (cloned.children.length) this.mesh.add(cloned.children[0]);
+      this.muzzleLocal = new THREE.Vector3(0.25, 1.25, 0.55);
+      this.mesh.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (!m.isMesh || !m.material) return;
+        const mats = Array.isArray(m.material) ? m.material : [m.material];
+        for (const mat of mats) {
+          const std = mat as THREE.MeshStandardMaterial;
+          if (std.isMeshStandardMaterial) this.bodyMats.push(std);
+        }
+      });
+      this.bodyMats.push(this.accentMat);
+      // Faction stripe beacon (readable at range even on glTF)
+      const stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(0.22, 0.05, 0.04),
+        this.accentMat,
+      );
+      stripe.position.set(0, 1.25, 0.28);
+      this.mesh.add(stripe);
+    } else {
+      // Procedural fallback — improved proportions + silhouette
+      const bodyMat = new THREE.MeshStandardMaterial({
+        color: 0x4a3532,
+        roughness: 0.78,
+        metalness: 0.12,
+        emissive: 0x1a0508,
+        emissiveIntensity: 0.15,
+        envMapIntensity: 0.45,
+      });
+      const armorMat = new THREE.MeshStandardMaterial({
+        color: 0x2a323c,
+        roughness: 0.42,
+        metalness: 0.65,
+        envMapIntensity: 0.85,
+      });
+      const helmetMat = new THREE.MeshStandardMaterial({
+        color: 0x3e4854,
+        roughness: 0.35,
+        metalness: 0.72,
+        envMapIntensity: 0.95,
+      });
+      const skinMat = new THREE.MeshStandardMaterial({
+        color: 0x6a5048,
+        roughness: 0.7,
+        metalness: 0.05,
+        envMapIntensity: 0.35,
+      });
+      const gunMat = new THREE.MeshStandardMaterial({
+        color: 0x14181c,
+        metalness: 0.85,
+        roughness: 0.35,
+        envMapIntensity: 1.0,
+      });
+      this.bodyMats.push(bodyMat, armorMat, helmetMat, skinMat, this.accentMat, gunMat);
+      const built = buildSoldierMesh(bodyMat, armorMat, helmetMat, skinMat, this.accentMat, gunMat);
+      this.muzzleLocal = built.muzzleLocal;
+      while (built.root.children.length) this.mesh.add(built.root.children[0]);
+      this.mesh.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (!m.isMesh || !m.material) return;
+        const mat = m.material as THREE.MeshStandardMaterial;
+        if (mat.emissive && mat.emissive.getHex() === 0xff2a3a && mat !== this.accentMat) {
+          this.visorEmissive = mat;
+        }
+      });
     }
-
-    // Find visor for hit flash
-    this.mesh.traverse((o) => {
-      const m = o as THREE.Mesh;
-      if (!m.isMesh || !m.material) return;
-      const mat = m.material as THREE.MeshStandardMaterial;
-      if (mat.emissive && mat.emissive.getHex() === 0xff2a3a && mat !== this.accentMat) {
-        this.visorEmissive = mat;
-      }
-    });
 
     this.muzzleFlash = new THREE.PointLight(0xff9955, 0, 5, 2);
     this.muzzleFlash.position.copy(this.muzzleLocal);
@@ -338,6 +357,11 @@ export class EnemyTarget {
       this.accentMat.emissiveIntensity = 1.35 + this.hitFlash * 2.2;
       if (this.visorEmissive) {
         this.visorEmissive.emissiveIntensity = 0.9 + this.hitFlash * 2.5;
+      }
+      for (const m of this.bodyMats) {
+        if (m !== this.accentMat && m.emissive) {
+          m.emissiveIntensity = 0.12 + this.hitFlash * 1.8;
+        }
       }
     }
 
@@ -515,11 +539,12 @@ export function createEnemies(
   colliders: THREE.Box3[],
   coverPoints: CoverPoint[] = [],
   count = 4,
+  assets: SoldierAssets | null = null,
 ): EnemyTarget[] {
   const enemies: EnemyTarget[] = [];
   const n = Math.min(count, spawns.length);
   for (let i = 0; i < n; i++) {
-    enemies.push(new EnemyTarget(i + 1, spawns[i].clone(), colliders, coverPoints));
+    enemies.push(new EnemyTarget(i + 1, spawns[i].clone(), colliders, coverPoints, 100, assets));
   }
   return enemies;
 }
