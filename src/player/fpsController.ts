@@ -91,6 +91,15 @@ export class FpsController {
     this.floors.push(...floors);
   }
 
+  /** Maps 0.3–2.0 UI sensitivity onto PointerLockControls.pointerSpeed */
+  setSensitivity(sens: number): void {
+    this.controls.pointerSpeed = Math.max(0.2, Math.min(2.5, sens));
+  }
+
+  getSensitivity(): number {
+    return this.controls.pointerSpeed;
+  }
+
   lock(): void {
     this.controls.lock();
   }

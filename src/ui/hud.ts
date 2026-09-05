@@ -7,6 +7,12 @@ export interface ObjectiveState {
   kills: number;
   goal: number;
   complete: boolean;
+  /** eliminate | defend | won */
+  phase?: 'eliminate' | 'defend' | 'won';
+  /** Seconds held in defend zone (0–30) */
+  defendHeld?: number;
+  defendGoal?: number;
+  inZone?: boolean;
 }
 
 export interface MinimapBlip {
@@ -41,6 +47,11 @@ export class Hud {
   private readonly streakToast: HTMLElement;
   private readonly minimapCanvas: HTMLCanvasElement;
   private readonly minimapCtx: CanvasRenderingContext2D;
+  private readonly winBanner: HTMLElement;
+  private readonly zoneHint: HTMLElement;
+  private readonly settingsPanel: HTMLElement;
+  private readonly sensSlider: HTMLInputElement;
+  private readonly sensVal: HTMLElement;
   private hitmarkerTimer = 0;
   private damageTimer = 0;
   private killcamTimer = 0;
@@ -77,6 +88,49 @@ export class Hud {
     this.streakToast = document.getElementById('streak-toast')!;
     this.minimapCanvas = document.getElementById('minimap-canvas') as HTMLCanvasElement;
     this.minimapCtx = this.minimapCanvas.getContext('2d')!;
+    this.winBanner = document.getElementById('win-banner')!;
+    this.zoneHint = document.getElementById('zone-hint')!;
+    this.settingsPanel = document.getElementById('settings-panel')!;
+    this.sensSlider = document.getElementById('sens-slider') as HTMLInputElement;
+    this.sensVal = document.getElementById('sens-val')!;
+  }
+
+  showSettings(show: boolean): void {
+    this.settingsPanel.classList.toggle('visible', show);
+    this.settingsPanel.setAttribute('aria-hidden', show ? 'false' : 'true');
+  }
+
+  get settingsOpen(): boolean {
+    return this.settingsPanel.classList.contains('visible');
+  }
+
+  setSensDisplay(v: number): void {
+    this.sensSlider.value = String(v);
+    this.sensVal.textContent = v.toFixed(2);
+  }
+
+  setQualityButtons(preset: string): void {
+    for (const id of ['q-low', 'q-med', 'q-high']) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      const q = el.getAttribute('data-quality');
+      el.classList.toggle('active', q === preset);
+    }
+  }
+
+  showWin(show: boolean): void {
+    this.winBanner.classList.toggle('show', show);
+    this.winBanner.setAttribute('aria-hidden', show ? 'false' : 'true');
+  }
+
+  setZoneHint(show: boolean, inZone: boolean, held: number, goal: number): void {
+    this.zoneHint.classList.toggle('show', show);
+    this.zoneHint.classList.toggle('in-zone', inZone);
+    if (!show) return;
+    const left = Math.max(0, goal - held);
+    this.zoneHint.textContent = inZone
+      ? `HOLDING · ${left.toFixed(1)}s`
+      : `RETURN TO TOWER · ${left.toFixed(1)}s LEFT`;
   }
 
   showOverlay(show: boolean): void {
@@ -93,20 +147,37 @@ export class Hud {
     this.ammoReserve.textContent = String(weapon.reserve);
     this.weaponName.textContent = weapon.reloading
       ? 'RELOADING…'
-      : weapon.adsBlend > 0.55
-        ? `${weapon.stats.name} · ADS`
-        : weapon.stats.name;
+      : weapon.inspecting
+        ? `${weapon.stats.name} · INSPECT`
+        : weapon.adsBlend > 0.55
+          ? `${weapon.stats.name} · ADS`
+          : weapon.stats.name;
     this.slot1.classList.toggle('active', slot === 1);
     this.slot2.classList.toggle('active', slot === 2);
   }
 
   setObjective(obj: ObjectiveState): void {
-    const pct = Math.min(100, (obj.kills / obj.goal) * 100);
+    const phase = obj.phase ?? (obj.complete ? 'won' : 'eliminate');
+    let pct: number;
+    let status: string;
+    if (phase === 'defend') {
+      const goal = obj.defendGoal ?? 30;
+      const held = obj.defendHeld ?? 0;
+      pct = Math.min(100, (held / goal) * 100);
+      status = `DEFEND TOWER  ${held.toFixed(1)}/${goal}s`;
+    } else if (phase === 'won') {
+      pct = 100;
+      status = 'MISSION COMPLETE';
+    } else {
+      pct = Math.min(100, (obj.kills / obj.goal) * 100);
+      status = obj.complete
+        ? 'OBJECTIVE COMPLETE'
+        : `${obj.label}  ${obj.kills}/${obj.goal}`;
+    }
     this.objectiveFill.style.width = `${pct}%`;
-    this.objectiveEl.classList.toggle('done', obj.complete);
-    const status = obj.complete
-      ? 'OBJECTIVE COMPLETE'
-      : `${obj.label}  ${obj.kills}/${obj.goal}`;
+    this.objectiveEl.classList.toggle('done', phase === 'won' || (phase === 'eliminate' && obj.complete));
+    this.objectiveEl.classList.toggle('defend', phase === 'defend');
+    this.objectiveEl.classList.toggle('won', phase === 'won');
     const text = this.objectiveEl.querySelector('.obj-text');
     if (text) text.textContent = status;
   }

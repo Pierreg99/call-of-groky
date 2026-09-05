@@ -44,12 +44,12 @@ export class GameRenderer {
   readonly camera: THREE.PerspectiveCamera;
   quality: QualitySettings;
   private composer: EffectComposer;
-  private bloomPass: UnrealBloomPass | null = null;
-  private ssaoPass: SSAOPass | null = null;
+  private bloomPass: UnrealBloomPass;
+  private ssaoPass: SSAOPass;
   private vignettePass: ShaderPass;
   private chromaticPass: ShaderPass;
-  private fxaaPass: ShaderPass | null = null;
-  private smaaPass: SMAAPass | null = null;
+  private fxaaPass: ShaderPass;
+  private smaaPass: SMAAPass;
   private reducedMotion: boolean;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -87,23 +87,22 @@ export class GameRenderer {
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
 
-    if (this.quality.ssao) {
-      this.ssaoPass = new SSAOPass(this.scene, this.camera, window.innerWidth, window.innerHeight);
-      this.ssaoPass.kernelRadius = 12;
-      this.ssaoPass.minDistance = 0.002;
-      this.ssaoPass.maxDistance = 0.08;
-      this.composer.addPass(this.ssaoPass);
-    }
+    // Always create optional passes so runtime quality presets can toggle them
+    this.ssaoPass = new SSAOPass(this.scene, this.camera, window.innerWidth, window.innerHeight);
+    this.ssaoPass.kernelRadius = 12;
+    this.ssaoPass.minDistance = 0.002;
+    this.ssaoPass.maxDistance = 0.08;
+    this.ssaoPass.enabled = this.quality.ssao;
+    this.composer.addPass(this.ssaoPass);
 
-    if (this.quality.bloom) {
-      this.bloomPass = new UnrealBloomPass(
-        new THREE.Vector2(window.innerWidth, window.innerHeight),
-        this.quality.bloomStrength,
-        0.4,
-        this.quality.bloomThreshold,
-      );
-      this.composer.addPass(this.bloomPass);
-    }
+    this.bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      this.quality.bloomStrength,
+      0.4,
+      this.quality.bloomThreshold,
+    );
+    this.bloomPass.enabled = this.quality.bloom;
+    this.composer.addPass(this.bloomPass);
 
     this.chromaticPass = new ShaderPass(ChromaticShader);
     this.chromaticPass.uniforms['amount'].value =
@@ -116,16 +115,19 @@ export class GameRenderer {
     this.vignettePass.uniforms['darkness'].value = vig;
     this.composer.addPass(this.vignettePass);
 
-    if (this.quality.postAA === 'smaa') {
-      this.smaaPass = new SMAAPass(window.innerWidth * this.quality.pixelRatio, window.innerHeight * this.quality.pixelRatio);
-      this.composer.addPass(this.smaaPass);
-    } else if (this.quality.postAA === 'fxaa') {
-      this.fxaaPass = new ShaderPass(FXAAShader);
-      const pr = this.renderer.getPixelRatio();
-      this.fxaaPass.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pr);
-      this.fxaaPass.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pr);
-      this.composer.addPass(this.fxaaPass);
-    }
+    this.smaaPass = new SMAAPass(
+      window.innerWidth * this.quality.pixelRatio,
+      window.innerHeight * this.quality.pixelRatio,
+    );
+    this.smaaPass.enabled = this.quality.postAA === 'smaa';
+    this.composer.addPass(this.smaaPass);
+
+    this.fxaaPass = new ShaderPass(FXAAShader);
+    const pr = this.renderer.getPixelRatio();
+    this.fxaaPass.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pr);
+    this.fxaaPass.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pr);
+    this.fxaaPass.enabled = this.quality.postAA === 'fxaa';
+    this.composer.addPass(this.fxaaPass);
 
     this.composer.addPass(new OutputPass());
 
@@ -156,14 +158,30 @@ export class GameRenderer {
     this.quality = settings;
     this.renderer.setPixelRatio(settings.pixelRatio);
     this.renderer.shadowMap.enabled = settings.shadows;
-    if (this.bloomPass) {
-      this.bloomPass.strength = settings.bloom ? settings.bloomStrength : 0;
-      this.bloomPass.threshold = settings.bloomThreshold;
-      this.bloomPass.enabled = settings.bloom;
-    }
-    if (this.ssaoPass) this.ssaoPass.enabled = settings.ssao;
+    this.bloomPass.strength = settings.bloom ? settings.bloomStrength : 0;
+    this.bloomPass.threshold = settings.bloomThreshold;
+    this.bloomPass.enabled = settings.bloom;
+    this.ssaoPass.enabled = settings.ssao;
+    this.smaaPass.enabled = settings.postAA === 'smaa';
+    this.fxaaPass.enabled = settings.postAA === 'fxaa';
     this.applyMotionPrefs();
     this.onResize();
+  }
+
+  /** Resize directional shadow maps to match current quality (Low=512). */
+  applyShadowMapSize(scene: THREE.Scene): void {
+    const size = this.quality.shadowMapSize;
+    scene.traverse((o) => {
+      const l = o as THREE.DirectionalLight;
+      if (l.isDirectionalLight && l.castShadow) {
+        l.shadow.mapSize.set(size, size);
+        if (l.shadow.map) {
+          l.shadow.map.dispose();
+          (l.shadow as THREE.LightShadow & { map: null }).map = null;
+        }
+        l.shadow.needsUpdate = true;
+      }
+    });
   }
 
   onResize(): void {

@@ -482,6 +482,11 @@ export class Firearm {
   private idlePhase = 0;
   private active = true;
   private switchCooldown = 0;
+  private switchAnim = 0;
+  /** Weapon inspect (F): 0 idle, >0 playing */
+  private inspectT = 0;
+  private readonly inspectDur = 1.85;
+  inspecting = false;
 
   usedGltfRifle = false;
 
@@ -514,14 +519,18 @@ export class Firearm {
     if (!on) {
       this.ads = false;
       this.reloading = false;
+      this.inspecting = false;
+      this.inspectT = 0;
       this.kick = 0;
       (this.flash.material as THREE.MeshBasicMaterial).opacity = 0;
       (this.flashCore.material as THREE.MeshBasicMaterial).opacity = 0;
       this.flashLight.intensity = 0;
     } else {
-      this.switchCooldown = 0.28;
-      // Brief raise-on-switch
-      this.viewModel.position.y = this.stats.hipPos[1] - 0.18;
+      this.switchCooldown = 0.38;
+      this.switchAnim = 1;
+      // Raise + slight roll on switch
+      this.viewModel.position.y = this.stats.hipPos[1] - 0.28;
+      this.viewModel.rotation.set(0.35, -0.15, 0.25);
     }
   }
 
@@ -534,11 +543,24 @@ export class Firearm {
   }
 
   setAds(on: boolean): void {
-    if (!this.active || this.reloading || this.switchCooldown > 0) {
+    if (!this.active || this.reloading || this.switchCooldown > 0 || this.inspecting) {
       this.ads = false;
       return;
     }
     this.ads = on;
+  }
+
+  /** Start inspect animation (F). Returns false if busy. */
+  startInspect(): boolean {
+    if (!this.active || this.reloading || this.inspecting || this.switchCooldown > 0) return false;
+    this.inspecting = true;
+    this.inspectT = this.inspectDur;
+    this.ads = false;
+    return true;
+  }
+
+  get isInspecting(): boolean {
+    return this.inspecting;
   }
 
   setWorldTargets(objects: THREE.Object3D[], enemies: EnemyTarget[]): void {
@@ -565,7 +587,7 @@ export class Firearm {
   tryFire(pressed: boolean, dt: number): void {
     if (!this.active) return;
     this.fireCooldown = Math.max(0, this.fireCooldown - dt);
-    if (this.switchCooldown > 0) return;
+    if (this.switchCooldown > 0 || this.inspecting) return;
     if (!pressed || this.reloading || this.mag <= 0 || this.fireCooldown > 0) {
       if (pressed && this.mag <= 0 && !this.reloading) this.startReload();
       return;
@@ -574,7 +596,7 @@ export class Firearm {
   }
 
   startReload(): void {
-    if (!this.active) return;
+    if (!this.active || this.inspecting) return;
     if (this.reloading || this.mag >= this.stats.magSize || this.reserve <= 0) return;
     this.reloading = true;
     this.ads = false;
@@ -724,17 +746,44 @@ export class Firearm {
     const bobScale = THREE.MathUtils.lerp(1, 0.22, this.adsBlend);
     const breathY = Math.sin(this.idlePhase * 1.4) * 0.004 * (1 - this.adsBlend * 0.7);
     const breathX = Math.sin(this.idlePhase * 0.9) * 0.0025 * (1 - this.adsBlend);
-    if (!this.reloading) {
-      const raise = this.switchCooldown > 0 ? (this.switchCooldown / 0.28) * 0.18 : 0;
+
+    // Inspect: flip / present weapon with idle sway
+    if (this.inspecting) {
+      this.inspectT -= dt;
+      const u = 1 - Math.max(0, this.inspectT) / this.inspectDur;
+      // Ease in-out present, hold mid, return
+      const present =
+        u < 0.18 ? u / 0.18 : u > 0.82 ? (1 - u) / 0.18 : 1;
+      const sway = Math.sin(this.idlePhase * 2.4) * 0.04 * present;
+      const swayY = Math.cos(this.idlePhase * 1.7) * 0.03 * present;
+      this.viewModel.position.set(
+        hipX * (1 - present * 0.55) + sway * 0.15,
+        hipY + 0.06 * present + swayY,
+        hipZ + 0.12 * present,
+      );
+      this.viewModel.rotation.set(
+        -0.15 * present + swayY * 0.8,
+        1.15 * present + sway,
+        0.35 * present + sway * 0.5,
+      );
+      if (this.inspectT <= 0) {
+        this.inspecting = false;
+        this.inspectT = 0;
+        this.viewModel.rotation.set(0, 0, 0);
+      }
+    } else if (!this.reloading) {
+      this.switchAnim = Math.max(0, this.switchAnim - dt * 2.6);
+      const raise = this.switchAnim * 0.28;
+      const roll = this.switchAnim * 0.35;
       this.viewModel.position.set(
         THREE.MathUtils.lerp(hipX, adsX, this.adsBlend) + this.bob.x * 1.55 * bobScale + breathX,
         THREE.MathUtils.lerp(hipY, adsY, this.adsBlend) + this.bob.y * bobScale + breathY - raise,
         THREE.MathUtils.lerp(hipZ, adsZ, this.adsBlend) - this.kick * this.stats.kickAmount,
       );
       this.viewModel.rotation.set(
-        this.kick * (this.stats.kind === 'smg' ? 0.04 : 0.05) + this.bob.y * 0.35 * bobScale,
-        -this.bob.x * 0.95 * bobScale + breathX * 2,
-        this.bob.x * 0.55 * bobScale - this.kick * 0.02,
+        this.kick * (this.stats.kind === 'smg' ? 0.04 : 0.05) + this.bob.y * 0.35 * bobScale + this.switchAnim * 0.2,
+        -this.bob.x * 0.95 * bobScale + breathX * 2 - this.switchAnim * 0.12,
+        this.bob.x * 0.55 * bobScale - this.kick * 0.02 + roll,
       );
     }
 
@@ -790,13 +839,21 @@ export class WeaponLoadout {
     const i = slot - 1;
     if (i < 0 || i >= this.weapons.length || i === this.index) return false;
     if (this.switchLock > 0) return false;
-    if (this.active.reloading) return false;
+    if (this.active.reloading || this.active.inspecting) return false;
     this.active.setAds(false);
     this.active.setActive(false);
     this.index = i;
     this.active.setActive(true);
-    this.switchLock = 0.2;
+    this.switchLock = 0.32;
     return true;
+  }
+
+  startInspect(): boolean {
+    return this.active.startInspect();
+  }
+
+  get inspecting(): boolean {
+    return this.active.inspecting;
   }
 
   cycle(dir: number): boolean {

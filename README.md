@@ -1,6 +1,6 @@
 # Call of Groky
 
-Cinematic **Three.js** FPS greybox — **Loop 7** minimap radar, wave spawns, damage/streak juice, SMG muzzle/SFX.
+Cinematic **Three.js** FPS greybox — **Loop 8** settings, defend-tower objective, weapon inspect, scout archetype.
 
 Not a Call of Duty clone. Premium-feeling WebGL arena shooter (Vite + TypeScript + Three.js r170+). Browser Three.js pushed harder; still **not** an IW-engine peer.
 
@@ -26,14 +26,21 @@ Production: Vite build to `dist/`, then Vite preview.
 | LMB | Fire |
 | RMB | ADS (FOV lerp) |
 | R | Reload |
+| F | Inspect weapon (tap or long-press) |
 | 1 / 2 | Switch rifle / SMG |
 | Mouse wheel | Cycle weapons |
-| F3 / ` | Toggle FPS counter |
-| Esc | Unlock pointer |
+| Esc / gear | Settings (sensitivity + quality) |
+| F3 / backtick | Toggle FPS counter |
+
+## Objective
+
+1. Eliminate **10** hostiles (waves at 5 and 10).
+2. **Defend** the control tower zone for **30 seconds**.
+3. **MISSION COMPLETE** win banner.
 
 ## Quality presets
 
-Auto-detected from CPU cores / `deviceMemory`. Canvas MSAA off; AA is post.
+Auto-detected from CPU cores / `deviceMemory`, overridable in Settings or `?quality=low|medium|high`. Canvas MSAA off; AA is post.
 
 | Preset | Pixel ratio | Shadow map | Post AA | Bloom | SSAO | Chromatic |
 |--------|-------------|------------|---------|-------|------|-----------|
@@ -43,15 +50,13 @@ Auto-detected from CPU cores / `deviceMemory`. Canvas MSAA off; AA is post.
 
 Vignette scales with preset. `prefers-reduced-motion: reduce` dampens recoil/bob, chromatic, and CSS vignette.
 
-## Loop 7 features
+## Loop 8 features
 
-- **Minimap radar:** top-down canvas — enemies, control tower, player (yaw-oriented)
-- **Wave spawns:** reinforcements at **5** and **10** eliminations
-- **Damage numbers** + **kill-streak** toasts
-- **Dual weapons:** GROKY-16 rifle + GROKY-9 SMG — SMG orange muzzle + layered fire SFX
-- **Compass + objective** / ammo pickups / control tower retained from Loop 6
-- **Soldier poses / viewmodel / HDRI / killcam-lite** retained from Loops 4–5
-- **Fog:** engagement-tuned Exp2
+- **Settings panel:** look sensitivity + quality Low/Med/High (persisted)
+- **Defend tower** hold after 10 kills → WIN
+- **Weapon inspect** + switch polish
+- **Scout** archetype (cyan / faster / fragile)
+- Prior loops: minimap, waves, dual weapons, compass, tower, HDRI, killcam-lite, juice
 
 ## Stack
 

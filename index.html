@@ -55,14 +55,38 @@
           <div id="killcam-name">TARGET</div>
         </div>
         <div id="fps-counter" style="display:none">FPS --</div>
+        <button id="gear-btn" type="button" title="Settings (Esc)" aria-label="Settings">⚙</button>
+        <div id="settings-panel" aria-hidden="true">
+          <div class="settings-card">
+            <h2>SETTINGS</h2>
+            <div class="row">
+              <label for="sens-slider">LOOK SENSITIVITY <span class="val" id="sens-val">1.00</span></label>
+              <input id="sens-slider" type="range" min="0.30" max="2.00" step="0.05" value="1.00" />
+            </div>
+            <div class="row">
+              <label>QUALITY PRESET</label>
+              <div class="quality-btns" role="group" aria-label="Quality">
+                <button type="button" data-quality="low" id="q-low">LOW</button>
+                <button type="button" data-quality="medium" id="q-med" class="active">MED</button>
+                <button type="button" data-quality="high" id="q-high">HIGH</button>
+              </div>
+            </div>
+            <button id="settings-resume" type="button">RESUME</button>
+          </div>
+        </div>
         <div id="overlay" class="visible">
           <div class="panel">
             <h1>CALL OF <span>GROKY</span></h1>
-            <p class="tag">LOOP 7 — MINIMAP · WAVES · JUICE · SMG LAYER</p>
-            <p class="hint">Click to lock · WASD · Shift sprint · Ctrl crouch · Space jump · LMB fire · RMB ADS · R reload · 1/2 or scroll switch · F3 FPS</p>
+            <p class="tag">LOOP 8 — SETTINGS · DEFEND · INSPECT · SCOUT</p>
+            <p class="hint">Click to lock · WASD · Shift sprint · Ctrl crouch · Space jump · LMB fire · RMB ADS · R reload · 1/2 or scroll switch · F inspect · Esc/⚙ settings · F3 FPS</p>
             <button id="start-btn" type="button">DEPLOY</button>
           </div>
         </div>
+        <div id="win-banner" aria-hidden="true">
+          <div class="win-title">MISSION COMPLETE</div>
+          <div class="win-sub">TOWER SECURED</div>
+        </div>
+        <div id="zone-hint" aria-hidden="true">HOLD THE TOWER</div>
         <div id="damage-flash"></div>
       </div>
     </div>

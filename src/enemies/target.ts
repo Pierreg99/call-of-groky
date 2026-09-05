@@ -4,6 +4,7 @@ import type { SoldierAssets } from './gltfAssets';
 import { createSoldierRig, type SoldierRig, type SoldierPose } from './soldierRig';
 
 export type EnemyState = 'patrol' | 'chase' | 'shoot' | 'cover' | 'dead';
+export type EnemyArchetype = 'grunt' | 'scout';
 
 export interface EnemyShotEvent {
   damage: number;
@@ -49,6 +50,9 @@ export class EnemyTarget {
   private tookHitRecently = 0;
   private readonly rig: SoldierRig;
   private hitKick = 0;
+  readonly archetype: EnemyArchetype;
+  private readonly moveMul: number;
+  private readonly shootMul: number;
 
   constructor(
     id: number,
@@ -57,10 +61,15 @@ export class EnemyTarget {
     coverPoints: CoverPoint[] = [],
     health = 100,
     assets: SoldierAssets | null = null,
+    archetype: EnemyArchetype = 'grunt',
   ) {
     this.id = id;
-    this.health = health;
-    this.maxHealth = health;
+    this.archetype = archetype;
+    this.moveMul = archetype === 'scout' ? 1.35 : 1;
+    this.shootMul = archetype === 'scout' ? 0.72 : 1;
+    const hp = archetype === 'scout' ? Math.round(health * 0.7) : health;
+    this.health = hp;
+    this.maxHealth = hp;
     this.colliders = colliders;
     this.coverPoints = coverPoints;
     this.mesh = new THREE.Group();
@@ -72,30 +81,31 @@ export class EnemyTarget {
     );
     this.patrolT = id * 0.37;
 
+    const isScout = archetype === 'scout';
     this.accentMat = new THREE.MeshStandardMaterial({
-      color: 0x1a0508,
-      emissive: 0xff3b4a,
+      color: isScout ? 0x05141a : 0x1a0508,
+      emissive: isScout ? 0x3dffe1 : 0xff3b4a,
       emissiveIntensity: 1.35,
       roughness: 0.4,
       metalness: 0.2,
     });
 
     const bodyMat = new THREE.MeshStandardMaterial({
-      color: 0x4a3532,
+      color: isScout ? 0x2a4048 : 0x4a3532,
       roughness: 0.78,
       metalness: 0.12,
-      emissive: 0x1a0508,
+      emissive: isScout ? 0x051418 : 0x1a0508,
       emissiveIntensity: 0.15,
       envMapIntensity: 0.55,
     });
     const armorMat = new THREE.MeshStandardMaterial({
-      color: 0x2a323c,
+      color: isScout ? 0x1e3a44 : 0x2a323c,
       roughness: 0.42,
-      metalness: 0.65,
+      metalness: isScout ? 0.55 : 0.65,
       envMapIntensity: 0.85,
     });
     const helmetMat = new THREE.MeshStandardMaterial({
-      color: 0x3e4854,
+      color: isScout ? 0x2a5560 : 0x3e4854,
       roughness: 0.35,
       metalness: 0.72,
       envMapIntensity: 0.95,
@@ -224,9 +234,9 @@ export class EnemyTarget {
     const toPlayer = this.tmp.copy(playerPos).sub(this.mesh.position);
     toPlayer.y = 0;
     const dist = toPlayer.length();
-    const aggro = 16;
-    const shootRange = 11;
-    const loseRange = 22;
+    const aggro = this.archetype === 'scout' ? 19 : 16;
+    const shootRange = this.archetype === 'scout' ? 10 : 11;
+    const loseRange = this.archetype === 'scout' ? 24 : 22;
 
     if (!playerAlive) {
       this.state = 'patrol';
@@ -261,7 +271,7 @@ export class EnemyTarget {
         {
           const t = (Math.sin(this.patrolT) + 1) * 0.5;
           this.look.copy(this.patrolA).lerp(this.patrolB, t);
-          this.moveToward(this.look, 1.4, dt);
+          this.moveToward(this.look, 1.4 * this.moveMul, dt);
           this.faceToward(
             this.velocity.lengthSq() > 0.01 ? this.velocity : this.look.clone().sub(this.mesh.position),
             dt,
@@ -269,7 +279,7 @@ export class EnemyTarget {
         }
         break;
       case 'chase':
-        this.moveToward(playerPos, 3.2, dt);
+        this.moveToward(playerPos, 3.2 * this.moveMul, dt);
         this.faceToward(toPlayer, dt);
         break;
       case 'shoot':
@@ -277,7 +287,7 @@ export class EnemyTarget {
         this.faceToward(toPlayer, dt * 1.5);
         this.shootCool -= dt;
         if (this.shootCool <= 0 && playerAlive) {
-          this.shootCool = 0.85 + Math.random() * 0.45;
+          this.shootCool = (0.85 + Math.random() * 0.45) * this.shootMul;
           this.fireAtPlayer(playerPos, dist);
         }
         break;
@@ -287,13 +297,13 @@ export class EnemyTarget {
           const cd = this.tmp.copy(this.activeCover.pos).sub(this.mesh.position);
           cd.y = 0;
           if (cd.length() > 0.35) {
-            this.moveToward(this.activeCover.pos, 3.6, dt);
+            this.moveToward(this.activeCover.pos, 3.6 * this.moveMul, dt);
           } else {
             this.velocity.multiplyScalar(0.7);
             this.faceToward(toPlayer, dt * 1.2);
             this.shootCool -= dt;
             if (this.shootCool <= 0 && playerAlive && this.duckAmount > 0.6) {
-              this.shootCool = 1.1 + Math.random() * 0.5;
+              this.shootCool = (1.1 + Math.random() * 0.5) * this.shootMul;
               this.fireAtPlayer(playerPos, dist);
             }
           }
@@ -418,7 +428,8 @@ export function createEnemies(
   const enemies: EnemyTarget[] = [];
   const n = Math.min(count, spawns.length);
   for (let i = 0; i < n; i++) {
-    enemies.push(new EnemyTarget(i + 1, spawns[i].clone(), colliders, coverPoints, 100, assets));
+    const arch: EnemyArchetype = i % 3 === 2 ? 'scout' : 'grunt';
+    enemies.push(new EnemyTarget(i + 1, spawns[i].clone(), colliders, coverPoints, 100, assets, arch));
   }
   return enemies;
 }
@@ -430,6 +441,8 @@ export function spawnEnemyAt(
   colliders: THREE.Box3[],
   coverPoints: CoverPoint[],
   assets: SoldierAssets | null = null,
+  archetype?: EnemyArchetype,
 ): EnemyTarget {
-  return new EnemyTarget(id, position.clone(), colliders, coverPoints, 100, assets);
+  const arch: EnemyArchetype = archetype ?? (id % 3 === 0 ? 'scout' : 'grunt');
+  return new EnemyTarget(id, position.clone(), colliders, coverPoints, 100, assets, arch);
 }
