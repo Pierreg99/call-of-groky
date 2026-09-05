@@ -833,3 +833,156 @@ html.capture-mode #gear-btn { display: none !important; }
 }
 #zone-hint.show { opacity: 1; }
 #zone-hint.in-zone { color: var(--ok); border-color: rgba(92, 255, 154, 0.45); }
+
+/* —— Mobile touch controls —— */
+.touch-controls {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+  display: none;
+  touch-action: none;
+}
+.touch-controls.visible {
+  display: block;
+  pointer-events: none;
+}
+.touch-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: auto;
+  touch-action: none;
+}
+.touch-zone-move {
+  left: 0;
+  width: 48%;
+}
+.touch-zone-look {
+  right: 0;
+  width: 52%;
+}
+.touch-stick-base {
+  position: fixed;
+  width: 120px;
+  height: 120px;
+  margin-left: -60px;
+  margin-top: -60px;
+  border-radius: 50%;
+  border: 2px solid rgba(92, 225, 255, 0.45);
+  background: rgba(8, 14, 22, 0.35);
+  box-shadow: inset 0 0 24px rgba(92, 225, 255, 0.12);
+  pointer-events: none;
+  z-index: 16;
+}
+.touch-stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(92, 225, 255, 0.85), rgba(30, 60, 80, 0.75));
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 14px rgba(92, 225, 255, 0.35);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.touch-actions {
+  position: absolute;
+  right: max(12px, env(safe-area-inset-right, 0px));
+  bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: auto;
+  z-index: 17;
+  touch-action: none;
+}
+.touch-actions-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.touch-actions-col-main {
+  gap: 10px;
+}
+.touch-btn {
+  min-width: 48px;
+  min-height: 48px;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(92, 225, 255, 0.4);
+  background: rgba(8, 14, 22, 0.72);
+  color: var(--hud);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
+  transition: background 80ms ease, border-color 80ms ease, transform 80ms ease;
+}
+.touch-btn.active,
+.touch-btn:active {
+  background: rgba(92, 225, 255, 0.28);
+  border-color: var(--accent);
+  transform: scale(0.96);
+}
+.touch-btn-fire {
+  width: 72px;
+  height: 72px;
+  min-width: 72px;
+  min-height: 72px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  border-color: rgba(255, 59, 74, 0.55);
+  background: rgba(40, 8, 12, 0.78);
+  color: #ffc8ce;
+}
+.touch-btn-fire.active,
+.touch-btn-fire:active {
+  background: rgba(255, 59, 74, 0.45);
+  border-color: var(--danger);
+  box-shadow: 0 0 18px rgba(255, 59, 74, 0.4);
+}
+.touch-btn-ads {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  min-height: 56px;
+}
+.touch-btn-inspect {
+  opacity: 0.85;
+  font-size: 9px;
+}
+html.capture-mode .touch-controls { display: none !important; }
+
+/* Lift HUD chrome above thumb cluster on narrow touch layouts */
+@media (pointer: coarse), (hover: none) {
+  #minimap {
+    bottom: max(200px, calc(110px + env(safe-area-inset-bottom, 0px)));
+  }
+  #pickup-toast {
+    bottom: max(200px, calc(110px + env(safe-area-inset-bottom, 0px)));
+  }
+  #zone-hint {
+    bottom: max(230px, calc(150px + env(safe-area-inset-bottom, 0px)));
+  }
+  #bottom-bar {
+    padding-bottom: max(18px, env(safe-area-inset-bottom, 0px));
+    padding-right: max(28px, calc(120px + env(safe-area-inset-right, 0px)));
+  }
+  #start-btn {
+    min-height: 48px;
+    padding: 14px 32px;
+  }
+}

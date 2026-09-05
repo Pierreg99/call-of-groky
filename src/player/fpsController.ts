@@ -48,6 +48,15 @@ export class FpsController {
   private lastMouseX = 0;
   private lastMouseY = 0;
 
+  /** Soft lock for touch play (no PointerLock API). */
+  private touchActive = false;
+  /** Normalized stick: x = strafe right, z = forward (−1…1). */
+  private touchMoveX = 0;
+  private touchMoveZ = 0;
+  private touchSprint = false;
+  private touchJumpQueued = false;
+  private readonly lookEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+
   constructor(camera: THREE.Camera, domElement: HTMLElement) {
     this.controls = new PointerLockControls(camera, domElement);
     this.object = this.controls.getObject();
@@ -104,8 +113,56 @@ export class FpsController {
     this.controls.lock();
   }
 
+  /** PointerLock or touch soft-lock — gameplay is active. */
   get isLocked(): boolean {
+    return this.controls.isLocked || this.touchActive;
+  }
+
+  get isPointerLocked(): boolean {
     return this.controls.isLocked;
+  }
+
+  get isTouchActive(): boolean {
+    return this.touchActive;
+  }
+
+  setTouchActive(on: boolean): void {
+    this.touchActive = on;
+    if (!on) {
+      this.touchMoveX = 0;
+      this.touchMoveZ = 0;
+      this.touchSprint = false;
+      this.touchJumpQueued = false;
+    }
+  }
+
+  setTouchMove(right: number, forward: number): void {
+    this.touchMoveX = THREE.MathUtils.clamp(right, -1, 1);
+    this.touchMoveZ = THREE.MathUtils.clamp(forward, -1, 1);
+  }
+
+  setTouchSprint(on: boolean): void {
+    this.touchSprint = on;
+  }
+
+  queueTouchJump(): void {
+    this.touchJumpQueued = true;
+  }
+
+  /** Apply look delta in screen pixels (PointerLock-equivalent scale). */
+  applyTouchLook(dx: number, dy: number): void {
+    if (!this.touchActive) return;
+    const cam = this.object;
+    const speed = 0.002 * this.controls.pointerSpeed;
+    this.lookEuler.setFromQuaternion(cam.quaternion);
+    this.lookEuler.y -= dx * speed;
+    this.lookEuler.x -= dy * speed;
+    this.lookEuler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.lookEuler.x));
+    cam.quaternion.setFromEuler(this.lookEuler);
+    this.sway.x += dx * 0.00035;
+    this.sway.y += dy * 0.00035;
+    this.lastMouseX = dx;
+    this.lastMouseY = dy;
   }
 
   get horizontalSpeed(): number {
@@ -119,10 +176,21 @@ export class FpsController {
   update(dt: number): void {
     const grounded = this.state.grounded;
     this.state.crouching = this.keys.has('ControlLeft') || this.keys.has('ControlRight');
+
+    this.direction.set(0, 0, 0);
+    const forward =
+      Number(this.keys.has('KeyW')) - Number(this.keys.has('KeyS')) + this.touchMoveZ;
+    const right =
+      Number(this.keys.has('KeyD')) - Number(this.keys.has('KeyA')) + this.touchMoveX;
+    this.direction.z = forward;
+    this.direction.x = right;
+    if (this.direction.lengthSq() > 0) this.direction.normalize();
+
+    const wantForward = this.direction.z > 0.15 || this.keys.has('KeyW');
     this.state.sprinting =
       !this.state.crouching &&
-      (this.keys.has('ShiftLeft') || this.keys.has('ShiftRight')) &&
-      this.keys.has('KeyW');
+      (this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') || this.touchSprint) &&
+      wantForward;
 
     const targetH = this.state.crouching ? this.crouchHeight : this.eyeHeight;
     this.currentHeight = THREE.MathUtils.damp(this.currentHeight, targetH, 12, dt);
@@ -130,13 +198,6 @@ export class FpsController {
     let speed = this.walkSpeed;
     if (this.state.crouching) speed = this.crouchSpeed;
     else if (this.state.sprinting) speed = this.sprintSpeed;
-
-    this.direction.set(0, 0, 0);
-    const forward = Number(this.keys.has('KeyW')) - Number(this.keys.has('KeyS'));
-    const right = Number(this.keys.has('KeyD')) - Number(this.keys.has('KeyA'));
-    this.direction.z = forward;
-    this.direction.x = right;
-    if (this.direction.lengthSq() > 0) this.direction.normalize();
 
     const accel = grounded ? 18 : 6;
 
@@ -150,10 +211,12 @@ export class FpsController {
     this.velocity.x = THREE.MathUtils.damp(this.velocity.x, wish.x, accel, dt);
     this.velocity.z = THREE.MathUtils.damp(this.velocity.z, wish.z, accel, dt);
 
-    if (grounded && this.keys.has('Space') && !this.state.crouching) {
+    const wantJump = this.keys.has('Space') || this.touchJumpQueued;
+    if (grounded && wantJump && !this.state.crouching) {
       this.velocity.y = this.jumpSpeed;
       this.state.grounded = false;
     }
+    this.touchJumpQueued = false;
 
     this.velocity.y -= this.gravity * dt;
 

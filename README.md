@@ -17,7 +17,8 @@ Production: Vite build to `dist/`, then Vite preview.
 
 | Input | Action |
 |-------|--------|
-| Click / Deploy | Pointer lock |
+| Click / Deploy | Pointer lock (desktop) |
+| Tap Deploy | Start play (touch / coarse pointer — no PointerLock) |
 | WASD | Move |
 | Mouse | Look |
 | Shift | Sprint |
@@ -31,6 +32,24 @@ Production: Vite build to `dist/`, then Vite preview.
 | Mouse wheel | Cycle weapons |
 | Esc / gear | Settings (sensitivity + quality) |
 | F3 / backtick | Toggle FPS counter |
+
+### Mobile / touch
+
+On touch / coarse-pointer devices an on-screen overlay appears after Deploy:
+
+| Touch | Action |
+|-------|--------|
+| Left virtual stick | Move (WASD-equivalent) |
+| Right-half drag | Look (yaw/pitch, no PointerLock) |
+| FIRE (hold) | Fire |
+| ADS (hold) | Aim down sights |
+| JMP | Jump |
+| RLD | Reload |
+| SPR (hold) | Sprint |
+| WPN | Switch weapon |
+| INS | Inspect (optional) |
+
+Buttons are ≥44px with safe-area insets. Desktop PointerLock path is unchanged.
 
 ## Objective
 

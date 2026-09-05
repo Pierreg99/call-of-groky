@@ -57,6 +57,8 @@ Expect materially higher numbers on a real discrete GPU. Low preset keeps Shadow
 11. Minimap is a simple radar splat — no fog-of-war / teammate pings / ping wheel.
 12. Settings are basic (sens + quality) — no FOV / audio mix / keybind remapper.
 
+13. **Touch:** virtual stick + look-pad + action cluster land for coarse pointers, but no haptic cues, no left/right-handedness toggle, no customizable button layout — still a greybox mobile layer vs CoD mobile UX.
+
 ## Gate artifacts
 
 - Screenshots: `docs/shots/01-mid-greybox.png`, `02-combat.png`, `03-hud-closeup.png`, `04-hud-mobile.png`
@@ -67,4 +69,4 @@ Expect materially higher numbers on a real discrete GPU. Low preset keeps Shadow
 
 ## Next loops (if override continues)
 
-- Real skinned GLB with aim/walk clips; navgrid; light probes / AO bake; streamed CC0 Foley if size budget allows; contested defend / extract variants
+- Real skinned GLB with aim/walk clips; navgrid; light probes / AO bake; streamed CC0 Foley if size budget allows; contested defend / extract variants; polish touch layout / handedness

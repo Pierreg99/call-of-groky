@@ -12,6 +12,7 @@ import { Hud } from './ui/hud';
 import { FpsCounter } from './ui/fps';
 import { gameAudio } from './audio/sfx';
 import { settingsFor } from './engine/quality';
+import { TouchControls, prefersTouchControls } from './ui/touchControls';
 
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const startBtn = document.getElementById('start-btn') as HTMLButtonElement;
@@ -118,6 +119,8 @@ async function boot(): Promise<void> {
 
   const hud = new Hud();
   const fps = new FpsCounter();
+  const touchMode = prefersTouchControls();
+  let touchUi: TouchControls | null = null;
   let kills = 0;
   let objectiveComplete = false;
   let wave5Done = false;
@@ -239,6 +242,29 @@ async function boot(): Promise<void> {
     }
   }
 
+  function setTouchPlaying(on: boolean): void {
+    player.setTouchActive(on);
+    touchUi?.setVisible(on && !settingsOpen);
+    if (!on) {
+      firing = false;
+      adsHeld = false;
+      loadout.setAds(false);
+      hud.setAds(false);
+    }
+  }
+
+  function beginPlay(): void {
+    gameAudio.ensure();
+    if (touchMode) {
+      setTouchPlaying(true);
+      hud.showOverlay(false);
+      hud.showSettings(false);
+      settingsOpen = false;
+    } else {
+      player.lock();
+    }
+  }
+
   function openSettings(): void {
     settingsOpen = true;
     hud.showSettings(true);
@@ -247,17 +273,21 @@ async function boot(): Promise<void> {
     adsHeld = false;
     loadout.setAds(false);
     hud.setAds(false);
-    if (player.isLocked) player.controls.unlock();
+    if (touchMode) {
+      setTouchPlaying(false);
+    } else if (player.isPointerLocked) {
+      player.controls.unlock();
+    }
   }
 
   function closeSettings(relock: boolean): void {
     settingsOpen = false;
     hud.showSettings(false);
     if (relock) {
-      gameAudio.ensure();
-      player.lock();
+      beginPlay();
     } else {
       hud.showOverlay(true);
+      touchUi?.setVisible(false);
     }
   }
 
@@ -271,10 +301,19 @@ async function boot(): Promise<void> {
   }
 
   function bindInput(): void {
+    if (touchMode) {
+      const hint = document.querySelector('#overlay .hint');
+      if (hint) {
+        hint.textContent =
+          'Tap Deploy to start · Left stick move · Right drag look · FIRE / ADS / JMP / RLD / SPR / WPN · Esc/⚙ settings';
+      }
+      startBtn.textContent = 'TAP TO START';
+      document.documentElement.classList.add('touch-ui');
+    }
+
     startBtn.addEventListener('click', () => {
-      gameAudio.ensure();
       if (settingsOpen) closeSettings(true);
-      else player.lock();
+      else beginPlay();
     });
 
     const gearBtn = document.getElementById('gear-btn');
@@ -316,6 +355,8 @@ async function boot(): Promise<void> {
       adsHeld = false;
       loadout.setAds(false);
       hud.setAds(false);
+      // Touch mode never uses PointerLock; ignore spurious unlock
+      if (touchMode) return;
       // Esc while playing → settings (not start overlay)
       if (!settingsOpen && !__CAPTURE__) {
         openSettings();
@@ -398,6 +439,57 @@ async function boot(): Promise<void> {
         fKeyHeld = 0;
       }
     });
+
+    if (touchMode) {
+      const hudRoot = document.getElementById('hud') ?? document.body;
+      touchUi = new TouchControls(hudRoot, {
+        onMove: (right, forward) => player.setTouchMove(right, forward),
+        onLook: (dx, dy) => player.applyTouchLook(dx, dy),
+        onFire: (pressed) => {
+          if (!player.isLocked || settingsOpen) {
+            firing = false;
+            return;
+          }
+          firing = pressed;
+        },
+        onAds: (pressed) => {
+          if (!player.isLocked || settingsOpen) {
+            adsHeld = false;
+            loadout.setAds(false);
+            hud.setAds(false);
+            return;
+          }
+          adsHeld = pressed;
+          loadout.setAds(pressed);
+          hud.setAds(pressed);
+        },
+        onJump: () => {
+          if (player.isLocked && !settingsOpen) player.queueTouchJump();
+        },
+        onReload: () => {
+          if (player.isLocked && !settingsOpen) loadout.startReload();
+        },
+        onSprint: (pressed) => player.setTouchSprint(pressed),
+        onSwitch: () => {
+          if (!player.isLocked || settingsOpen) return;
+          if (loadout.cycle(1)) {
+            adsHeld = false;
+            loadout.setAds(false);
+            hud.setAds(false);
+            syncHud();
+          }
+        },
+        onInspect: () => {
+          if (!player.isLocked || settingsOpen) return;
+          if (loadout.startInspect()) {
+            adsHeld = false;
+            loadout.setAds(false);
+            hud.setAds(false);
+            syncHud();
+          }
+        },
+      });
+    }
   }
 
   function frame(): void {
