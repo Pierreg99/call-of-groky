@@ -6,18 +6,25 @@ import {
   createRustMetal,
   createFloorMaterial,
   createAccentEmissive,
+  createNeonStrip,
 } from './materials';
+import type { FloorPad } from '../player/fpsController';
 
 export interface ArenaBuild {
   root: THREE.Group;
   colliders: THREE.Box3[];
+  floors: FloorPad[];
   spawnPoints: THREE.Vector3[];
 }
 
 function boxMesh(
-  w: number, h: number, d: number,
+  w: number,
+  h: number,
+  d: number,
   mat: THREE.Material,
-  x: number, y: number, z: number,
+  x: number,
+  y: number,
+  z: number,
   cast = true,
   receive = true,
 ): THREE.Mesh {
@@ -30,31 +37,42 @@ function boxMesh(
 
 function addCollider(list: THREE.Box3[], mesh: THREE.Mesh): void {
   mesh.updateMatrixWorld(true);
-  const b = new THREE.Box3().setFromObject(mesh);
-  // Expand slightly for player radius feel
-  list.push(b);
+  list.push(new THREE.Box3().setFromObject(mesh));
 }
 
-export function buildArena(scene: THREE.Scene): ArenaBuild {
+function addFloorPad(floors: FloorPad[], mesh: THREE.Mesh, inset = 0.05): void {
+  mesh.updateMatrixWorld(true);
+  const b = new THREE.Box3().setFromObject(mesh);
+  floors.push({
+    minX: b.min.x + inset,
+    maxX: b.max.x - inset,
+    minZ: b.min.z + inset,
+    maxZ: b.max.z - inset,
+    topY: b.max.y,
+  });
+}
+
+export function buildArena(scene: THREE.Scene, shadowMapSize = 2048): ArenaBuild {
   const root = new THREE.Group();
   root.name = 'arena';
   const colliders: THREE.Box3[] = [];
+  const floors: FloorPad[] = [];
 
   const concrete = createConcreteMaterial();
   const dark = createDarkConcrete();
   const metal = createMetalMaterial();
   const rust = createRustMetal();
   const floorMat = createFloorMaterial();
-  const lamp = createAccentEmissive(0x5ce1ff, 1.4);
-  const warn = createAccentEmissive(0xff6a3d, 1.1);
+  const lamp = createAccentEmissive(0x5ce1ff, 1.6);
+  const warn = createAccentEmissive(0xff6a3d, 1.3);
+  const neonCyan = createNeonStrip(0x5ce1ff, 2.4);
+  const neonOrange = createNeonStrip(0xff6a3d, 2.0);
 
-  // Ground
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), floorMat);
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   root.add(floor);
 
-  // Outer walls
   const wallH = 5.5;
   const walls: Array<[number, number, number, number, number, number]> = [
     [60, wallH, 1.2, 0, wallH / 2, -30],
@@ -68,16 +86,21 @@ export function buildArena(scene: THREE.Scene): ArenaBuild {
     addCollider(colliders, m);
   }
 
-  // Central courtyard pillars
-  for (const [x, z] of [[-6, -6], [6, -6], [-6, 6], [6, 6]] as const) {
+  for (const [x, z] of [
+    [-6, -6],
+    [6, -6],
+    [-6, 6],
+    [6, 6],
+  ] as const) {
     const p = boxMesh(1.4, 4.2, 1.4, concrete, x, 2.1, z);
     root.add(p);
     addCollider(colliders, p);
     const cap = boxMesh(1.8, 0.25, 1.8, metal, x, 4.3, z, true, false);
     root.add(cap);
+    const ring = boxMesh(1.5, 0.06, 1.5, neonCyan, x, 0.08, z, false, false);
+    root.add(ring);
   }
 
-  // Room A — west bunker
   const roomA: Array<[number, number, number, number, number, number, THREE.Material]> = [
     [10, 4, 0.6, -18, 2, -10, concrete],
     [10, 4, 0.6, -18, 2, 2, concrete],
@@ -90,12 +113,10 @@ export function buildArena(scene: THREE.Scene): ArenaBuild {
     root.add(m);
     addCollider(colliders, m);
   }
-  // Door lintel
   const lintel = boxMesh(0.6, 1.2, 2.6, metal, -13, 3.4, -4);
   root.add(lintel);
   addCollider(colliders, lintel);
 
-  // Room B — east hangar with crates
   const hangarBack = boxMesh(14, 5, 0.7, dark, 18, 2.5, -12);
   root.add(hangarBack);
   addCollider(colliders, hangarBack);
@@ -109,7 +130,10 @@ export function buildArena(scene: THREE.Scene): ArenaBuild {
   root.add(hangarFrontR);
   addCollider(colliders, hangarFrontR);
 
-  // Metal containers / cover
+  // Neon door frame accents
+  root.add(boxMesh(0.08, 2.4, 0.08, neonOrange, -13, 1.2, -5.2, false, false));
+  root.add(boxMesh(0.08, 2.4, 0.08, neonOrange, -13, 1.2, -2.8, false, false));
+
   const covers: Array<[number, number, number, number, number, number, THREE.Material]> = [
     [2.4, 1.4, 1.2, -2, 0.7, 2, metal],
     [1.2, 1.8, 2.2, 3, 0.9, -3, rust],
@@ -126,15 +150,28 @@ export function buildArena(scene: THREE.Scene): ArenaBuild {
     addCollider(colliders, m);
   }
 
-  // Ramp / platform north
   const platform = boxMesh(8, 0.4, 6, concrete, -4, 1.4, 18);
   root.add(platform);
   addCollider(colliders, platform);
+  addFloorPad(floors, platform);
+
   const ramp = boxMesh(3, 0.35, 5, metal, -4, 0.7, 13.5);
   ramp.rotation.x = -0.35;
   root.add(ramp);
+  // Approximate ramp as stepped floor pads
+  for (let i = 0; i < 5; i++) {
+    const t = i / 4;
+    const z = 13.5 - 2.2 + t * 4.4;
+    const y = 0.35 + t * 1.05;
+    floors.push({
+      minX: -5.4,
+      maxX: -2.6,
+      minZ: z - 0.55,
+      maxZ: z + 0.55,
+      topY: y,
+    });
+  }
 
-  // Barrier wall mid
   const midWall = boxMesh(12, 2.2, 0.5, concrete, 2, 1.1, -8);
   root.add(midWall);
   addCollider(colliders, midWall);
@@ -142,13 +179,14 @@ export function buildArena(scene: THREE.Scene): ArenaBuild {
   root.add(midGapL);
   addCollider(colliders, midGapL);
 
-  // Ceiling strips / beams for military feel
+  // Neon strip along mid barrier
+  root.add(boxMesh(11.5, 0.05, 0.08, neonCyan, 2, 2.25, -8, false, false));
+
   for (let i = -2; i <= 2; i++) {
     const beam = boxMesh(0.35, 0.35, 24, metal, i * 5, 5.2, 0, false, true);
     root.add(beam);
   }
 
-  // Light fixtures (emissive meshes)
   const fixtures: Array<[number, number, number, THREE.Material]> = [
     [-18, 3.8, -4, lamp],
     [18, 4.2, -4, lamp],
@@ -161,14 +199,13 @@ export function buildArena(scene: THREE.Scene): ArenaBuild {
     root.add(f);
   }
 
-  // Lights
-  const hemi = new THREE.HemisphereLight(0x8ba3c7, 0x1a1510, 0.55);
+  const hemi = new THREE.HemisphereLight(0x8ba3c7, 0x1a1510, 0.5);
   scene.add(hemi);
 
-  const sun = new THREE.DirectionalLight(0xffe2c4, 2.1);
+  const sun = new THREE.DirectionalLight(0xffe2c4, 2.0);
   sun.position.set(18, 28, 10);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(shadowMapSize, shadowMapSize);
   sun.shadow.camera.near = 2;
   sun.shadow.camera.far = 80;
   sun.shadow.camera.left = -35;
@@ -182,10 +219,10 @@ export function buildArena(scene: THREE.Scene): ArenaBuild {
   sun.target.position.set(0, 0, 0);
 
   const points: Array<[number, number, number, number, number]> = [
-    [-18, 3.5, -4, 0x7ad7ff, 8],
-    [18, 4.0, -3, 0x7ad7ff, 10],
-    [0, 3.2, 12, 0xff9a5c, 6],
-    [-6, 2.8, 18, 0x9ad0ff, 5],
+    [-18, 3.5, -4, 0x7ad7ff, 9],
+    [18, 4.0, -3, 0x7ad7ff, 11],
+    [0, 3.2, 12, 0xff9a5c, 6.5],
+    [-6, 2.8, 18, 0x9ad0ff, 5.5],
   ];
   for (const [x, y, z, color, intensity] of points) {
     const pl = new THREE.PointLight(color, intensity, 18, 2);
@@ -194,8 +231,7 @@ export function buildArena(scene: THREE.Scene): ArenaBuild {
     scene.add(pl);
   }
 
-  // Subtle fill
-  const fill = new THREE.DirectionalLight(0x4a6a9a, 0.35);
+  const fill = new THREE.DirectionalLight(0x4a6a9a, 0.32);
   fill.position.set(-20, 10, -15);
   scene.add(fill);
 
@@ -209,5 +245,5 @@ export function buildArena(scene: THREE.Scene): ArenaBuild {
     new THREE.Vector3(2, 0, -16),
   ];
 
-  return { root, colliders, spawnPoints };
+  return { root, colliders, floors, spawnPoints };
 }

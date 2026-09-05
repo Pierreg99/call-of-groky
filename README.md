@@ -1,8 +1,8 @@
 # Call of Groky
 
-Cinematic **Three.js** FPS greybox scaffold — Phase 1 playable slice.
+Cinematic **Three.js** FPS greybox — **Loop 2** quality pass.
 
-Not a Call of Duty clone. A premium-feeling WebGL arena shooter prototype built with Vite, TypeScript, and Three.js r170+.
+Not a Call of Duty clone. Premium-feeling WebGL arena shooter (Vite + TypeScript + Three.js r170+). Browser Three.js pushed harder; still **not** an IW-engine peer.
 
 ## Play
 
@@ -10,17 +10,8 @@ Not a Call of Duty clone. A premium-feeling WebGL arena shooter prototype built 
 
 ## Run locally
 
-```bash
-npm install
-npm run dev
-```
-
-Open the URL Vite prints (default `http://localhost:5173/call-of-groky/`).
-
-```bash
-npm run build    # production bundle → dist/
-npm run preview  # preview production build
-```
+Install deps, then start the Vite dev server; open the printed URL (base `/call-of-groky/`).
+Production: Vite build to `dist/`, then Vite preview.
 
 ## Controls
 
@@ -33,43 +24,64 @@ npm run preview  # preview production build
 | Ctrl | Crouch |
 | Space | Jump |
 | LMB | Fire |
+| RMB | ADS (FOV lerp) |
 | R | Reload |
 | Esc | Unlock pointer |
+## Quality presets
 
-## Phase 1 features
+Auto-detected from CPU cores / `deviceMemory`. Canvas MSAA off; AA is post.
 
-- WebGLRenderer with ACES Filmic tone mapping, shadows, color management, DPR clamp, quality presets
-- Custom PointerLock FPS controller (sprint / jump / crouch, weapon bob & sway)
-- Multi-room urban/military greybox with procedural concrete/metal PBR materials, fog, directional + hemisphere + point lights
-- GROKY-16 rifle: muzzle flash, recoil, reload, hitscan, tracers, impact decals & sparks
-- 4 damageable enemy targets with death pose
-- HUD: crosshair, hitmarker, ammo, health, kill feed, deploy overlay
+| Preset | Pixel ratio | Shadow map | Post AA | Bloom | SSAO | Chromatic |
+|--------|-------------|------------|---------|-------|------|-----------|
+| **low** | ≤1 | 1024 | FXAA | off | off | off |
+| **medium** | ≤1.5 | 1536 | SMAA | subtle | off | on |
+| **high** | ≤2 | 2048 | SMAA | subtle+ | on | on |
+
+Vignette scales with preset. `prefers-reduced-motion: reduce` dampens recoil/bob, chromatic, and CSS vignette.
+
+## Loop 2 features
+
+- **Post stack:** EffectComposer → RenderPass → optional SSAO → UnrealBloomPass → chromatic → vignette → SMAA/FXAA → OutputPass
+- **Materials:** procedural PBR with normal + roughness maps, metal/concrete contrast, neon emissives, PMREM `RoomEnvironment`
+- **Weapon:** RMB ADS FOV lerp, dual-layer muzzle flash, additive cylinder tracers, shell casing eject
+- **Enemies:** patrol → chase → shoot state AI with chip damage + hit flash (not proximity-only)
+- **Audio:** procedural WebAudio (gunshot, reload, footstep, hit, death, enemy shot) with stereo distance
+- **Collision:** AABB walls + walkable floor pads (north platform / ramp steps)
+- **A11y:** reduced-motion dampens shake/vignette
+
+## Phase 1 → Loop 2 (diff notes)
+
+| Area | Phase 1 | Loop 2 |
+|------|---------|--------|
+| Render | Direct `renderer.render` | EffectComposer post stack |
+| AA | Optional canvas MSAA | FXAA / SMAA gated by preset |
+| Bloom / SSAO | None | Bloom med/high; SSAO high |
+| Materials | Flat noise albedo | Normal + roughness maps, neon, PMREM |
+| Weapon | Hip only | ADS FOV + shell casings |
+| Enemies | Idle bob + proximity chip | Patrol/chase/shoot AI |
+| Audio | Silent | Procedural WebAudio |
+| Collision | AABB walls, flat floor | + raised floor pads |
+| Motion prefs | None | `prefers-reduced-motion` |
 
 ## Stack
 
 - Vite 5 + TypeScript
-- Three.js ≥ 0.170 (addons: `PointerLockControls`)
+- Three.js ≥ 0.170 (PointerLockControls, EffectComposer, SMAA/FXAA, UnrealBloom, SSAO, RoomEnvironment)
 
 ## Project layout
 
 ```
-src/
-  main.ts
-  engine/     renderer + quality presets
-  player/     FPS controller
-  world/      arena + materials
-  combat/     rifle + VFX
-  enemies/    simple targets
-  ui/         HUD bindings
+src/  engine player world combat enemies audio ui
+docs/shots/   Critic gate screenshots
 ```
 
-## Known gaps (next loops)
+## Screenshots
 
-- No AI pathfinding / shooting back (proximity chip damage only)
-- Flat-floor collision (ramps/platforms are visual cover, not full walkables)
-- Single weapon, no ADS, no sound
-- No post-processing stack yet (bloom/SSAO optional later)
-- No networked multiplayer
+See [`docs/shots/`](./docs/shots/).
+
+## Honest gaps
+
+See [`CRITIC.md`](./CRITIC.md). **Does not claim CoD visual parity.**
 
 ## License
 

@@ -10,6 +10,15 @@ export interface PlayerState {
   velocity: THREE.Vector3;
 }
 
+export interface FloorPad {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+  /** Walkable top Y in world space */
+  topY: number;
+}
+
 export class FpsController {
   readonly controls: PointerLockControls;
   readonly object: THREE.Object3D;
@@ -27,9 +36,11 @@ export class FpsController {
   private sprintSpeed = 8.4;
   private crouchSpeed = 2.6;
   private readonly colliders: THREE.Box3[] = [];
+  private readonly floors: FloorPad[] = [];
   private readonly playerRadius = 0.35;
   private readonly tmpBox = new THREE.Box3();
   private readonly tmpVec = new THREE.Vector3();
+  private floorY = 0;
 
   bobPhase = 0;
   bobAmount = 0;
@@ -52,7 +63,11 @@ export class FpsController {
 
     document.addEventListener('keydown', (e) => {
       this.keys.add(e.code);
-      if (['Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ControlLeft', 'ControlRight', 'ShiftLeft', 'ShiftRight'].includes(e.code)) {
+      if (
+        ['Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ControlLeft', 'ControlRight', 'ShiftLeft', 'ShiftRight'].includes(
+          e.code,
+        )
+      ) {
         e.preventDefault();
       }
     });
@@ -71,12 +86,21 @@ export class FpsController {
     this.colliders.push(...boxes);
   }
 
+  setFloors(floors: FloorPad[]): void {
+    this.floors.length = 0;
+    this.floors.push(...floors);
+  }
+
   lock(): void {
     this.controls.lock();
   }
 
   get isLocked(): boolean {
     return this.controls.isLocked;
+  }
+
+  get horizontalSpeed(): number {
+    return Math.hypot(this.velocity.x, this.velocity.z);
   }
 
   takeDamage(amount: number): void {
@@ -106,10 +130,7 @@ export class FpsController {
     if (this.direction.lengthSq() > 0) this.direction.normalize();
 
     const accel = grounded ? 18 : 6;
-    const targetVelX = this.direction.x * speed;
-    const targetVelZ = this.direction.z * speed;
 
-    // Convert local wish dir to world via controls
     const wish = this.tmpVec.set(this.direction.x, 0, this.direction.z);
     if (wish.lengthSq() > 0) {
       wish.applyQuaternion(this.object.quaternion);
@@ -129,15 +150,9 @@ export class FpsController {
 
     this.moveWithCollision(dt);
 
-    // Keep eye height relative to floor contact
-    if (this.state.grounded) {
-      this.object.position.y = this.currentHeight;
-    }
-
-    // Weapon bob from horizontal speed
     const hSpeed = Math.hypot(this.velocity.x, this.velocity.z);
     const bobSpeed = this.state.sprinting ? 14 : 10;
-    if (grounded && hSpeed > 0.4) {
+    if (this.state.grounded && hSpeed > 0.4) {
       this.bobPhase += dt * bobSpeed * (hSpeed / speed);
       this.bobAmount = THREE.MathUtils.damp(this.bobAmount, 1, 8, dt);
     } else {
@@ -148,9 +163,6 @@ export class FpsController {
     this.sway.y = THREE.MathUtils.damp(this.sway.y, 0, 8, dt);
     this.lastMouseX *= 0.85;
     this.lastMouseY *= 0.85;
-
-    void targetVelX;
-    void targetVelZ;
   }
 
   getBobOffset(out: THREE.Vector3): THREE.Vector3 {
@@ -163,46 +175,55 @@ export class FpsController {
     return out;
   }
 
+  private sampleFloor(x: number, z: number): number {
+    let best = 0;
+    for (const f of this.floors) {
+      if (x >= f.minX && x <= f.maxX && z >= f.minZ && z <= f.maxZ) {
+        if (f.topY > best) best = f.topY;
+      }
+    }
+    return best;
+  }
+
   private moveWithCollision(dt: number): void {
     const pos = this.object.position;
 
-    // X
     pos.x += this.velocity.x * dt;
     if (this.hitsWall(pos)) {
       pos.x -= this.velocity.x * dt;
       this.velocity.x = 0;
     }
 
-    // Z
     pos.z += this.velocity.z * dt;
     if (this.hitsWall(pos)) {
       pos.z -= this.velocity.z * dt;
       this.velocity.z = 0;
     }
 
-    // Y
     pos.y += this.velocity.y * dt;
-    const floorY = this.currentHeight;
-    if (pos.y <= floorY && this.velocity.y <= 0) {
-      pos.y = floorY;
+    this.floorY = this.sampleFloor(pos.x, pos.z);
+    const eyeOnFloor = this.floorY + this.currentHeight;
+    if (pos.y <= eyeOnFloor && this.velocity.y <= 0) {
+      pos.y = eyeOnFloor;
       this.velocity.y = 0;
       this.state.grounded = true;
     } else {
       this.state.grounded = false;
     }
 
-    // World bounds soft clamp
     pos.x = THREE.MathUtils.clamp(pos.x, -28, 28);
     pos.z = THREE.MathUtils.clamp(pos.z, -28, 28);
   }
 
   private hitsWall(pos: THREE.Vector3): boolean {
     const r = this.playerRadius;
-    this.tmpBox.set(
-      this.tmpVec.set(pos.x - r, 0.2, pos.z - r),
-      new THREE.Vector3(pos.x + r, this.currentHeight - 0.1, pos.z + r),
-    );
+    const feet = this.floorY + 0.2;
+    const head = pos.y - 0.05;
+    this.tmpBox.min.set(pos.x - r, feet, pos.z - r);
+    this.tmpBox.max.set(pos.x + r, Math.max(feet + 0.1, head), pos.z + r);
     for (const box of this.colliders) {
+      // Ignore boxes whose top is a walkable floor under our feet
+      if (box.max.y <= this.floorY + 0.15 && box.max.y >= this.floorY - 0.05) continue;
       if (this.tmpBox.intersectsBox(box)) return true;
     }
     return false;

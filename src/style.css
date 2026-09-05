@@ -316,3 +316,48 @@ html, body, #app {
   #ammo-mag { font-size: 28px; }
   #health-bar { width: 100px; }
 }
+
+/* ADS crosshair tighten */
+#crosshair.ads {
+  width: 10px;
+  height: 10px;
+  opacity: 0.95;
+}
+#crosshair.ads::before,
+#crosshair.ads::after {
+  box-shadow: 0 0 8px rgba(92, 225, 255, 0.7);
+}
+
+#vignette.ads {
+  opacity: 1;
+  background: radial-gradient(ellipse at center, transparent 38%, rgba(0, 0, 0, 0.72) 100%);
+}
+
+/* prefers-reduced-motion: dampen CSS vignette / flash transitions */
+@media (prefers-reduced-motion: reduce) {
+  #vignette {
+    opacity: 0.35;
+  }
+  #vignette.ads {
+    opacity: 0.45;
+  }
+  #crosshair.firing {
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  #hitmarker,
+  #damage-flash,
+  #overlay,
+  #kill-feed .item {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+html.reduced-motion #vignette {
+  opacity: 0.35;
+}
+html.reduced-motion #vignette.ads {
+  opacity: 0.45;
+}
+
+html.capture-mode #overlay { display: none !important; }

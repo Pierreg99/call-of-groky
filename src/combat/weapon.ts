@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { CombatEffects } from './effects';
 import type { EnemyTarget } from '../enemies/target';
+import { gameAudio } from '../audio/sfx';
 
 export interface WeaponStats {
   name: string;
@@ -10,7 +11,10 @@ export interface WeaponStats {
   rpm: number;
   reloadTime: number;
   spread: number;
+  adsSpread: number;
   range: number;
+  hipFov: number;
+  adsFov: number;
 }
 
 export class Rifle {
@@ -22,17 +26,23 @@ export class Rifle {
     rpm: 650,
     reloadTime: 1.65,
     spread: 0.012,
+    adsSpread: 0.004,
     range: 120,
+    hipFov: 75,
+    adsFov: 52,
   };
 
   mag: number;
   reserve: number;
   reloading = false;
+  ads = false;
+  adsBlend = 0;
 
   readonly viewModel: THREE.Group;
   private readonly muzzle: THREE.Object3D;
   private readonly flash: THREE.Mesh;
   private readonly flashLight: THREE.PointLight;
+  private readonly flashCore: THREE.Mesh;
   private recoilPitch = 0;
   private recoilYaw = 0;
   private kick = 0;
@@ -43,12 +53,17 @@ export class Rifle {
   private readonly bob = new THREE.Vector3();
   private readonly shootOrigin = new THREE.Vector3();
   private readonly shootDir = new THREE.Vector3();
+  private readonly right = new THREE.Vector3();
+  private readonly forward = new THREE.Vector3();
+  private readonly shellPos = new THREE.Vector3();
   private readonly camera: THREE.PerspectiveCamera;
   private readonly effects: CombatEffects;
   private readonly worldObjects: THREE.Object3D[] = [];
   private enemies: EnemyTarget[] = [];
   private onHitEnemy: ((e: EnemyTarget, killed: boolean) => void) | null = null;
   private onHud: (() => void) | null = null;
+  private motionScale = 1;
+  private wasAds = false;
 
   constructor(camera: THREE.PerspectiveCamera, effects: CombatEffects) {
     this.camera = camera;
@@ -59,13 +74,29 @@ export class Rifle {
     this.viewModel = new THREE.Group();
     this.viewModel.position.set(0.28, -0.28, -0.55);
 
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1c222a, metalness: 0.7, roughness: 0.45 });
-    const accentMat = new THREE.MeshStandardMaterial({ color: 0x2e3a46, metalness: 0.85, roughness: 0.35 });
-    const gripMat = new THREE.MeshStandardMaterial({ color: 0x121416, roughness: 0.9, metalness: 0.1 });
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: 0x1c222a,
+      metalness: 0.78,
+      roughness: 0.4,
+      envMapIntensity: 1.1,
+    });
+    const accentMat = new THREE.MeshStandardMaterial({
+      color: 0x2e3a46,
+      metalness: 0.9,
+      roughness: 0.3,
+      envMapIntensity: 1.2,
+    });
+    const gripMat = new THREE.MeshStandardMaterial({ color: 0x121416, roughness: 0.92, metalness: 0.08 });
+    const neonMat = new THREE.MeshStandardMaterial({
+      color: 0x0a1218,
+      emissive: 0x5ce1ff,
+      emissiveIntensity: 1.6,
+      metalness: 0.3,
+      roughness: 0.35,
+    });
 
     const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.42), bodyMat);
     receiver.position.set(0, 0.02, 0);
-    receiver.castShadow = false;
     this.viewModel.add(receiver);
 
     const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.38, 8), accentMat);
@@ -89,6 +120,10 @@ export class Rifle {
     sight.position.set(0, 0.08, -0.05);
     this.viewModel.add(sight);
 
+    const railGlow = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.008, 0.2), neonMat);
+    railGlow.position.set(0, 0.075, -0.12);
+    this.viewModel.add(railGlow);
+
     this.muzzle = new THREE.Object3D();
     this.muzzle.position.set(0, 0.03, -0.55);
     this.viewModel.add(this.muzzle);
@@ -100,15 +135,38 @@ export class Rifle {
       depthWrite: false,
       blending: THREE.AdditiveBlending,
     });
-    this.flash = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.18), flashMat);
+    this.flash = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.22), flashMat);
     this.flash.position.copy(this.muzzle.position);
     this.viewModel.add(this.flash);
 
-    this.flashLight = new THREE.PointLight(0xffcc88, 0, 6, 2);
+    const coreMat = new THREE.MeshBasicMaterial({
+      color: 0xfff8e0,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    this.flashCore = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), coreMat);
+    this.flashCore.position.copy(this.muzzle.position);
+    this.viewModel.add(this.flashCore);
+
+    this.flashLight = new THREE.PointLight(0xffcc88, 0, 8, 2);
     this.flashLight.position.copy(this.muzzle.position);
     this.viewModel.add(this.flashLight);
 
     camera.add(this.viewModel);
+  }
+
+  setMotionScale(scale: number): void {
+    this.motionScale = scale;
+  }
+
+  setAds(on: boolean): void {
+    if (this.reloading) {
+      this.ads = false;
+      return;
+    }
+    this.ads = on;
   }
 
   setWorldTargets(objects: THREE.Object3D[], enemies: EnemyTarget[]): void {
@@ -134,26 +192,35 @@ export class Rifle {
   startReload(): void {
     if (this.reloading || this.mag >= this.stats.magSize || this.reserve <= 0) return;
     this.reloading = true;
+    this.ads = false;
     this.reloadTimer = this.stats.reloadTime;
+    gameAudio.play('reload');
   }
 
   private fire(): void {
     this.mag -= 1;
     this.fireCooldown = 60 / this.stats.rpm;
+    const recoilMul = this.ads ? 0.55 : 1;
     this.kick = 1;
-    this.recoilPitch += 0.018 + Math.random() * 0.01;
-    this.recoilYaw += (Math.random() - 0.5) * 0.012;
-    this.flashTimer = 0.045;
-    this.flashLight.intensity = 12;
+    this.recoilPitch += (0.018 + Math.random() * 0.01) * recoilMul * this.motionScale;
+    this.recoilYaw += (Math.random() - 0.5) * 0.012 * recoilMul * this.motionScale;
+    this.flashTimer = 0.05;
+    this.flashLight.intensity = 16;
     (this.flash.material as THREE.MeshBasicMaterial).opacity = 1;
+    (this.flashCore.material as THREE.MeshBasicMaterial).opacity = 1;
     this.flash.rotation.z = Math.random() * Math.PI;
-    this.flash.scale.setScalar(0.8 + Math.random() * 0.6);
+    this.flash.scale.setScalar(0.9 + Math.random() * 0.7);
+    this.flashCore.scale.setScalar(0.8 + Math.random() * 0.5);
+
+    gameAudio.play('gunshot');
+
+    const spread = THREE.MathUtils.lerp(this.stats.spread, this.stats.adsSpread, this.adsBlend);
 
     this.camera.getWorldPosition(this.shootOrigin);
     this.camera.getWorldDirection(this.shootDir);
-    this.shootDir.x += (Math.random() - 0.5) * this.stats.spread;
-    this.shootDir.y += (Math.random() - 0.5) * this.stats.spread;
-    this.shootDir.z += (Math.random() - 0.5) * this.stats.spread;
+    this.shootDir.x += (Math.random() - 0.5) * spread;
+    this.shootDir.y += (Math.random() - 0.5) * spread;
+    this.shootDir.z += (Math.random() - 0.5) * spread;
     this.shootDir.normalize();
 
     this.raycaster.set(this.shootOrigin, this.shootDir);
@@ -172,21 +239,43 @@ export class Rifle {
 
     if (enemyHit && (!worldHit || enemyHit.distance <= worldHit.distance)) {
       impactPoint = enemyHit.point;
-      impactNormal = enemyHit.face?.normal.clone().transformDirection(enemyHit.object.matrixWorld).normalize() ?? impactNormal;
+      impactNormal =
+        enemyHit.face?.normal.clone().transformDirection(enemyHit.object.matrixWorld).normalize() ??
+        impactNormal;
       hitEnemy = this.enemies.find((e) => e.owns(enemyHit.object)) ?? null;
     } else if (worldHit) {
       impactPoint = worldHit.point;
-      impactNormal = worldHit.face?.normal.clone().transformDirection(worldHit.object.matrixWorld).normalize() ?? impactNormal;
+      impactNormal =
+        worldHit.face?.normal.clone().transformDirection(worldHit.object.matrixWorld).normalize() ??
+        impactNormal;
     }
 
-    // Tracer from muzzle world pos
     const muzzleWorld = new THREE.Vector3();
     this.muzzle.getWorldPosition(muzzleWorld);
     this.effects.spawnTracer(muzzleWorld, impactPoint);
     this.effects.spawnImpact(impactPoint, impactNormal);
 
+    // Shell casing eject to the right of the weapon
+    this.camera.getWorldDirection(this.forward);
+    this.right.set(1, 0, 0).applyQuaternion(this.camera.quaternion);
+    this.shellPos.copy(muzzleWorld).addScaledVector(this.right, 0.08).addScaledVector(this.forward, 0.05);
+    this.shellPos.y -= 0.02;
+    this.effects.spawnShell(this.shellPos, this.right, this.forward);
+
     if (hitEnemy) {
       const killed = hitEnemy.applyDamage(this.stats.damage);
+      gameAudio.play('hit', {
+        x: hitEnemy.mesh.position.x,
+        y: hitEnemy.mesh.position.y + 1,
+        z: hitEnemy.mesh.position.z,
+      });
+      if (killed) {
+        gameAudio.play('death', {
+          x: hitEnemy.mesh.position.x,
+          y: hitEnemy.mesh.position.y + 1,
+          z: hitEnemy.mesh.position.z,
+        });
+      }
       this.onHitEnemy?.(hitEnemy, killed);
     }
 
@@ -194,6 +283,17 @@ export class Rifle {
   }
 
   update(dt: number, bobOffset: THREE.Vector3, isLocked: boolean): void {
+    const adsTarget = this.ads && !this.reloading ? 1 : 0;
+    this.adsBlend = THREE.MathUtils.damp(this.adsBlend, adsTarget, 14, dt);
+    if (this.ads && !this.wasAds) gameAudio.play('ads');
+    this.wasAds = this.ads;
+
+    const fov = THREE.MathUtils.lerp(this.stats.hipFov, this.stats.adsFov, this.adsBlend);
+    if (Math.abs(this.camera.fov - fov) > 0.05) {
+      this.camera.fov = fov;
+      this.camera.updateProjectionMatrix();
+    }
+
     if (this.reloading) {
       this.reloadTimer -= dt;
       const t = 1 - this.reloadTimer / this.stats.reloadTime;
@@ -221,16 +321,23 @@ export class Rifle {
     }
 
     this.bob.copy(bobOffset);
+    const bobScale = THREE.MathUtils.lerp(1, 0.25, this.adsBlend);
     if (!this.reloading) {
+      const hipX = 0.28;
+      const adsX = 0.0;
+      const hipY = -0.28;
+      const adsY = -0.18;
+      const hipZ = -0.55;
+      const adsZ = -0.42;
       this.viewModel.position.set(
-        0.28 + this.bob.x * 1.4,
-        -0.28 + this.bob.y,
-        -0.55 - this.kick * 0.06,
+        THREE.MathUtils.lerp(hipX, adsX, this.adsBlend) + this.bob.x * 1.4 * bobScale,
+        THREE.MathUtils.lerp(hipY, adsY, this.adsBlend) + this.bob.y * bobScale,
+        THREE.MathUtils.lerp(hipZ, adsZ, this.adsBlend) - this.kick * 0.06,
       );
       this.viewModel.rotation.set(
         this.kick * 0.04,
-        -this.bob.x * 0.8,
-        this.bob.x * 0.5,
+        -this.bob.x * 0.8 * bobScale,
+        this.bob.x * 0.5 * bobScale,
       );
     }
 
@@ -238,7 +345,10 @@ export class Rifle {
       this.flashTimer -= dt;
       if (this.flashTimer <= 0) {
         (this.flash.material as THREE.MeshBasicMaterial).opacity = 0;
+        (this.flashCore.material as THREE.MeshBasicMaterial).opacity = 0;
         this.flashLight.intensity = 0;
+      } else {
+        this.flashLight.intensity = 16 * (this.flashTimer / 0.05);
       }
     }
   }

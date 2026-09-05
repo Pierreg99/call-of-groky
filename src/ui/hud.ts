@@ -12,6 +12,7 @@ export class Hud {
   private readonly killFeed: HTMLElement;
   private readonly overlay: HTMLElement;
   private readonly damageFlash: HTMLElement;
+  private readonly vignette: HTMLElement;
   private hitmarkerTimer = 0;
   private damageTimer = 0;
 
@@ -26,6 +27,7 @@ export class Hud {
     this.killFeed = document.getElementById('kill-feed')!;
     this.overlay = document.getElementById('overlay')!;
     this.damageFlash = document.getElementById('damage-flash')!;
+    this.vignette = document.getElementById('vignette')!;
   }
 
   showOverlay(show: boolean): void {
@@ -40,11 +42,20 @@ export class Hud {
     this.ammoMag.textContent = String(weapon.mag);
     this.ammoMag.classList.toggle('low', weapon.mag <= 7);
     this.ammoReserve.textContent = String(weapon.reserve);
-    this.weaponName.textContent = weapon.reloading ? 'RELOADING…' : weapon.stats.name;
+    this.weaponName.textContent = weapon.reloading
+      ? 'RELOADING…'
+      : weapon.adsBlend > 0.55
+        ? `${weapon.stats.name} · ADS`
+        : weapon.stats.name;
   }
 
   setFiring(firing: boolean): void {
     this.crosshair.classList.toggle('firing', firing);
+  }
+
+  setAds(ads: boolean): void {
+    this.crosshair.classList.toggle('ads', ads);
+    this.vignette.classList.toggle('ads', ads);
   }
 
   showHitmarker(): void {

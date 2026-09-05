@@ -3,6 +3,7 @@ import * as THREE from 'three';
 function makeNoiseTexture(
   size: number,
   fn: (x: number, y: number, i: number) => [number, number, number, number?],
+  colorSpace: THREE.ColorSpace = THREE.SRGBColorSpace,
 ): THREE.DataTexture {
   const data = new Uint8Array(size * size * 4);
   for (let y = 0; y < size; y++) {
@@ -18,7 +19,8 @@ function makeNoiseTexture(
   const tex = new THREE.DataTexture(data, size, size);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.needsUpdate = true;
-  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.colorSpace = colorSpace;
+  tex.anisotropy = 4;
   return tex;
 }
 
@@ -27,84 +29,217 @@ function hash(x: number, y: number): number {
   return s - Math.floor(s);
 }
 
+function valueNoise(x: number, y: number): number {
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const fx = x - x0;
+  const fy = y - y0;
+  const u = fx * fx * (3 - 2 * fx);
+  const v = fy * fy * (3 - 2 * fy);
+  const a = hash(x0, y0);
+  const b = hash(x0 + 1, y0);
+  const c = hash(x0, y0 + 1);
+  const d = hash(x0 + 1, y0 + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+
+function fbm(x: number, y: number): number {
+  let a = 0;
+  let amp = 0.5;
+  let f = 1;
+  for (let i = 0; i < 4; i++) {
+    a += valueNoise(x * f, y * f) * amp;
+    amp *= 0.5;
+    f *= 2;
+  }
+  return a;
+}
+
+/** Procedural tangent-ish normal map from height noise */
+function makeNormalMap(size: number, scale = 1.6): THREE.DataTexture {
+  const data = new Uint8Array(size * size * 4);
+  const strength = 2.8;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = (x / size) * 8 * scale;
+      const v = (y / size) * 8 * scale;
+      const hL = fbm(u - 0.05, v);
+      const hR = fbm(u + 0.05, v);
+      const hD = fbm(u, v - 0.05);
+      const hU = fbm(u, v + 0.05);
+      let nx = (hL - hR) * strength;
+      let ny = (hD - hU) * strength;
+      let nz = 1;
+      const len = Math.hypot(nx, ny, nz) || 1;
+      nx /= len;
+      ny /= len;
+      nz /= len;
+      const i = (y * size + x) * 4;
+      data[i] = Math.floor((nx * 0.5 + 0.5) * 255);
+      data[i + 1] = Math.floor((ny * 0.5 + 0.5) * 255);
+      data[i + 2] = Math.floor((nz * 0.5 + 0.5) * 255);
+      data[i + 3] = 255;
+    }
+  }
+  const tex = new THREE.DataTexture(data, size, size);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.needsUpdate = true;
+  tex.colorSpace = THREE.NoColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
+
 export function createConcreteMaterial(): THREE.MeshStandardMaterial {
   const map = makeNoiseTexture(128, (x, y) => {
-    const n = hash(x, y) * 40 + hash(x * 0.2, y * 0.2) * 30;
-    const v = 78 + n;
-    return [v, v + 2, v - 2];
+    const n = fbm(x * 0.12, y * 0.12) * 55 + hash(x, y) * 18;
+    const crack = fbm(x * 0.4, y * 0.4) > 0.72 ? -18 : 0;
+    const v = 72 + n + crack;
+    return [v, v + 3, v - 1];
   });
   map.repeat.set(4, 4);
 
-  const rough = makeNoiseTexture(64, (x, y) => {
-    const v = 140 + hash(x, y) * 80;
-    return [v, v, v];
-  });
-  rough.colorSpace = THREE.NoColorSpace;
+  const rough = makeNoiseTexture(
+    64,
+    (x, y) => {
+      const v = 120 + fbm(x * 0.2, y * 0.2) * 100 + hash(x, y) * 30;
+      return [v, v, v];
+    },
+    THREE.NoColorSpace,
+  );
   rough.repeat.set(4, 4);
+
+  const normalMap = makeNormalMap(128, 1.4);
+  normalMap.repeat.set(4, 4);
 
   return new THREE.MeshStandardMaterial({
     color: 0x8a8e93,
     map,
     roughnessMap: rough,
-    roughness: 0.92,
-    metalness: 0.04,
-    envMapIntensity: 0.35,
+    normalMap,
+    normalScale: new THREE.Vector2(0.55, 0.55),
+    roughness: 0.94,
+    metalness: 0.03,
+    envMapIntensity: 0.4,
   });
 }
 
 export function createDarkConcrete(): THREE.MeshStandardMaterial {
   const map = makeNoiseTexture(128, (x, y) => {
-    const n = hash(x + 3, y + 1) * 28;
-    const v = 42 + n;
-    return [v, v + 1, v + 3];
+    const n = fbm(x * 0.1 + 3, y * 0.1 + 1) * 36;
+    const v = 38 + n;
+    return [v, v + 1, v + 4];
   });
   map.repeat.set(2, 2);
+  const normalMap = makeNormalMap(96, 1.1);
+  normalMap.repeat.set(2, 2);
+  const rough = makeNoiseTexture(
+    64,
+    (x, y) => {
+      const v = 150 + hash(x + 9, y) * 70;
+      return [v, v, v];
+    },
+    THREE.NoColorSpace,
+  );
   return new THREE.MeshStandardMaterial({
-    color: 0x4a4e55,
+    color: 0x3e434b,
     map,
-    roughness: 0.88,
-    metalness: 0.08,
+    roughnessMap: rough,
+    normalMap,
+    normalScale: new THREE.Vector2(0.4, 0.4),
+    roughness: 0.9,
+    metalness: 0.06,
+    envMapIntensity: 0.3,
   });
 }
 
 export function createMetalMaterial(): THREE.MeshStandardMaterial {
   const map = makeNoiseTexture(64, (x, y) => {
-    const band = ((x + y * 2) % 8 < 1) ? 30 : 0;
-    const v = 110 + hash(x, y) * 40 - band;
-    return [v, v + 4, v + 8];
+    const band = (x + y * 2) % 8 < 1 ? 35 : 0;
+    const scratch = hash(x * 3, y) > 0.92 ? 40 : 0;
+    const v = 105 + hash(x, y) * 45 - band + scratch;
+    return [v, v + 5, v + 10];
   });
   map.repeat.set(2, 2);
+  const rough = makeNoiseTexture(
+    64,
+    (x, y) => {
+      const v = 60 + hash(x, y) * 90 + ((x + y) % 8 < 1 ? 40 : 0);
+      return [v, v, v];
+    },
+    THREE.NoColorSpace,
+  );
+  rough.repeat.set(2, 2);
+  const normalMap = makeNormalMap(64, 2.2);
+  normalMap.repeat.set(3, 3);
   return new THREE.MeshStandardMaterial({
-    color: 0x6d7580,
+    color: 0x7a8490,
     map,
-    roughness: 0.38,
-    metalness: 0.86,
-    envMapIntensity: 1.0,
+    roughnessMap: rough,
+    normalMap,
+    normalScale: new THREE.Vector2(0.7, 0.7),
+    roughness: 0.32,
+    metalness: 0.92,
+    envMapIntensity: 1.25,
   });
 }
 
 export function createRustMetal(): THREE.MeshStandardMaterial {
+  const map = makeNoiseTexture(64, (x, y) => {
+    const rust = fbm(x * 0.25, y * 0.25);
+    const r = 90 + rust * 50;
+    const g = 55 + rust * 20;
+    const b = 40 + hash(x, y) * 15;
+    return [r, g, b];
+  });
+  map.repeat.set(2, 2);
+  const rough = makeNoiseTexture(
+    64,
+    (x, y) => {
+      const v = 140 + fbm(x * 0.2, y * 0.2) * 90;
+      return [v, v, v];
+    },
+    THREE.NoColorSpace,
+  );
   return new THREE.MeshStandardMaterial({
-    color: 0x5a4538,
-    roughness: 0.72,
-    metalness: 0.55,
+    color: 0x6a4e3c,
+    map,
+    roughnessMap: rough,
+    roughness: 0.78,
+    metalness: 0.48,
+    envMapIntensity: 0.7,
   });
 }
 
 export function createFloorMaterial(): THREE.MeshStandardMaterial {
   const map = makeNoiseTexture(128, (x, y) => {
     const tile = (Math.floor(x / 16) + Math.floor(y / 16)) % 2;
-    const n = hash(x, y) * 20;
-    const base = tile ? 55 : 48;
+    const n = fbm(x * 0.15, y * 0.15) * 22;
+    const base = tile ? 52 : 44;
     const v = base + n;
-    return [v, v, v + 4];
+    const grit = hash(x, y) * 12;
+    return [v + grit * 0.2, v, v + 5];
   });
   map.repeat.set(8, 8);
+  const normalMap = makeNormalMap(128, 1.8);
+  normalMap.repeat.set(8, 8);
+  const rough = makeNoiseTexture(
+    64,
+    (x, y) => {
+      const v = 160 + hash(x, y) * 60;
+      return [v, v, v];
+    },
+    THREE.NoColorSpace,
+  );
+  rough.repeat.set(8, 8);
   return new THREE.MeshStandardMaterial({
-    color: 0x3a3d44,
+    color: 0x353940,
     map,
-    roughness: 0.85,
-    metalness: 0.12,
+    roughnessMap: rough,
+    normalMap,
+    normalScale: new THREE.Vector2(0.45, 0.45),
+    roughness: 0.88,
+    metalness: 0.1,
+    envMapIntensity: 0.35,
   });
 }
 
@@ -113,7 +248,18 @@ export function createAccentEmissive(color: number, intensity = 1.2): THREE.Mesh
     color,
     emissive: color,
     emissiveIntensity: intensity,
-    roughness: 0.4,
-    metalness: 0.2,
+    roughness: 0.35,
+    metalness: 0.25,
+    envMapIntensity: 0.5,
+  });
+}
+
+export function createNeonStrip(color: number, intensity = 2.2): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({
+    color: 0x101418,
+    emissive: color,
+    emissiveIntensity: intensity,
+    roughness: 0.25,
+    metalness: 0.4,
   });
 }
