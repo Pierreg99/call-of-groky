@@ -15,6 +15,8 @@ import { buildControlTower } from './pieces/tower';
 import { buildCoverClusters } from './pieces/cover';
 import { buildRampPlatform } from './pieces/ramp';
 import { buildWindowWall } from './pieces/windowWall';
+import { buildHangar } from './pieces/hangar';
+import { buildBunker } from './pieces/bunker';
 
 export interface AmmoPickup {
   mesh: THREE.Object3D;
@@ -103,37 +105,21 @@ export function buildArena(scene: THREE.Scene, shadowMapSize = 2048): ArenaBuild
     root.add(ring);
   }
 
-  const roomA: Array<[number, number, number, number, number, number, THREE.Material]> = [
-    [10, 4, 0.6, -18, 2, -10, concrete],
-    [10, 4, 0.6, -18, 2, 2, concrete],
-    [0.6, 4, 12.6, -23, 2, -4, concrete],
-    [0.6, 4, 5, -13, 2, -8, concrete],
-    [0.6, 4, 5, -13, 2, 0, concrete],
-  ];
-  for (const [w, h, d, x, y, z, mat] of roomA) {
-    const m = boxMesh(w, h, d, mat, x, y, z);
-    root.add(m);
-    addCollider(colliders, m);
-  }
-  const lintel = boxMesh(0.6, 1.2, 2.6, metal, -13, 3.4, -4);
-  root.add(lintel);
-  addCollider(colliders, lintel);
+  // Modular west bunker room
+  buildBunker({
+    root,
+    colliders,
+    concrete,
+    metal,
+    neonOrange,
+  });
 
-  const hangarBack = boxMesh(14, 5, 0.7, dark, 18, 2.5, -12);
-  root.add(hangarBack);
-  addCollider(colliders, hangarBack);
-  const hangarSide = boxMesh(0.7, 5, 16, dark, 25, 2.5, -4);
-  root.add(hangarSide);
-  addCollider(colliders, hangarSide);
-  const hangarFrontL = boxMesh(5, 5, 0.7, dark, 12, 2.5, 4);
-  root.add(hangarFrontL);
-  addCollider(colliders, hangarFrontL);
-  const hangarFrontR = boxMesh(5, 5, 0.7, dark, 22, 2.5, 4);
-  root.add(hangarFrontR);
-  addCollider(colliders, hangarFrontR);
-
-  root.add(boxMesh(0.08, 2.4, 0.08, neonOrange, -13, 1.2, -5.2, false, false));
-  root.add(boxMesh(0.08, 2.4, 0.08, neonOrange, -13, 1.2, -2.8, false, false));
+  // Modular east hangar bay
+  buildHangar({
+    root,
+    colliders,
+    dark,
+  });
 
   // Modular cover / crate clusters + barrels + AI anchors
   buildCoverClusters({
