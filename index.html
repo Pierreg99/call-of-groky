@@ -30,6 +30,12 @@
           </div>
           <div id="compass-label">OBJ</div>
         </div>
+        <div id="minimap" aria-hidden="true">
+          <canvas id="minimap-canvas" width="128" height="128"></canvas>
+          <div id="minimap-label">RADAR</div>
+        </div>
+        <div id="dmg-layer"></div>
+        <div id="streak-toast" aria-hidden="true"></div>
         <div id="bottom-bar">
           <div id="weapon-slots">
             <div id="slot-1" class="wep-slot active"><span class="n">1</span><span class="nm">G-16</span></div>
@@ -52,7 +58,7 @@
         <div id="overlay" class="visible">
           <div class="panel">
             <h1>CALL OF <span>GROKY</span></h1>
-            <p class="tag">LOOP 6 — DUAL WEAPONS · COMPASS · CONTROL TOWER</p>
+            <p class="tag">LOOP 7 — MINIMAP · WAVES · JUICE · SMG LAYER</p>
             <p class="hint">Click to lock · WASD · Shift sprint · Ctrl crouch · Space jump · LMB fire · RMB ADS · R reload · 1/2 or scroll switch · F3 FPS</p>
             <button id="start-btn" type="button">DEPLOY</button>
           </div>

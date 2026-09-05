@@ -3,7 +3,7 @@
  * No external sample downloads required (license-clean by construction).
  */
 
-type SfxKind = 'gunshot' | 'reload' | 'footstep' | 'hit' | 'death' | 'enemyShot' | 'ads' | 'kill';
+type SfxKind = 'gunshot' | 'gunshotSmg' | 'reload' | 'footstep' | 'hit' | 'death' | 'enemyShot' | 'ads' | 'kill';
 
 export class GameAudio {
   private ctx: AudioContext | null = null;
@@ -65,6 +65,15 @@ export class GameAudio {
         this.tone(ctx, out, now, 220, 0.045, 'square', 0.22);
         this.tone(ctx, out, now, 95, 0.09, 'sawtooth', 0.18);
         this.tone(ctx, out, now + 0.01, 55, 0.12, 'sine', 0.2);
+        break;
+      case 'gunshotSmg':
+        // Higher / snappier layers vs rifle — distinct SMG identity
+        this.noiseBurst(ctx, out, now, 0.045, 2200, 0.48);
+        this.noiseBurst(ctx, out, now, 0.07, 900, 0.32);
+        this.tone(ctx, out, now, 340, 0.028, 'square', 0.2);
+        this.tone(ctx, out, now, 180, 0.04, 'triangle', 0.14);
+        this.tone(ctx, out, now + 0.008, 70, 0.07, 'sine', 0.12);
+        this.tone(ctx, out, now + 0.015, 520, 0.02, 'sine', 0.08);
         break;
       case 'enemyShot':
         this.noiseBurst(ctx, out, now, 0.06, 800, 0.4);

@@ -1,6 +1,6 @@
 # Call of Groky
 
-Cinematic **Three.js** FPS greybox — **Loop 6** dual weapons (rifle + SMG), compass objective, control-tower landmark.
+Cinematic **Three.js** FPS greybox — **Loop 7** minimap radar, wave spawns, damage/streak juice, SMG muzzle/SFX.
 
 Not a Call of Duty clone. Premium-feeling WebGL arena shooter (Vite + TypeScript + Three.js r170+). Browser Three.js pushed harder; still **not** an IW-engine peer.
 
@@ -43,12 +43,13 @@ Auto-detected from CPU cores / `deviceMemory`. Canvas MSAA off; AA is post.
 
 Vignette scales with preset. `prefers-reduced-motion: reduce` dampens recoil/bob, chromatic, and CSS vignette.
 
-## Loop 6 features
+## Loop 7 features
 
-- **Dual weapons:** GROKY-16 rifle + GROKY-9 SMG — distinct RPM/recoil/ADS/spread; switch 1/2 or scroll
-- **Ammo pickups** + per-weapon reserve
-- **Compass + objective:** needle to control tower; survive/clear **10 eliminations**
-- **Control tower landmark:** stairs, deck, consoles, aisle shelves, mast (screenshot composition)
+- **Minimap radar:** top-down canvas — enemies, control tower, player (yaw-oriented)
+- **Wave spawns:** reinforcements at **5** and **10** eliminations
+- **Damage numbers** + **kill-streak** toasts
+- **Dual weapons:** GROKY-16 rifle + GROKY-9 SMG — SMG orange muzzle + layered fire SFX
+- **Compass + objective** / ammo pickups / control tower retained from Loop 6
 - **Soldier poses / viewmodel / HDRI / killcam-lite** retained from Loops 4–5
 - **Fog:** engagement-tuned Exp2
 

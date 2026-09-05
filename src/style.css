@@ -566,3 +566,101 @@ html.capture-mode #killcam { display: none !important; }
   #compass-ring { width: 44px; height: 44px; }
   #weapon-slots { padding: 4px; }
 }
+
+/* Loop 7 — minimap radar / damage numbers / kill streak */
+#minimap {
+  position: absolute;
+  left: 18px;
+  bottom: 110px;
+  width: 128px;
+  height: 148px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  z-index: 12;
+  pointer-events: none;
+}
+#minimap-canvas {
+  width: 128px;
+  height: 128px;
+  border-radius: 8px;
+  border: 1px solid rgba(92, 225, 255, 0.4);
+  background: rgba(4, 10, 16, 0.72);
+  box-shadow: 0 0 18px rgba(0, 0, 0, 0.45), inset 0 0 20px rgba(92, 225, 255, 0.06);
+}
+#minimap-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--accent);
+  text-shadow: 0 0 8px rgba(92, 225, 255, 0.35);
+}
+#dmg-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 16;
+  overflow: hidden;
+}
+#dmg-layer .dmg-num {
+  position: absolute;
+  font-family: var(--mono);
+  font-weight: 800;
+  font-size: 18px;
+  color: #ffe8a0;
+  text-shadow: 0 0 8px rgba(255, 120, 40, 0.75), 0 1px 2px #000;
+  transform: translate(-50%, -50%);
+  animation: dmgFloat 0.75s ease-out forwards;
+  white-space: nowrap;
+  pointer-events: none;
+}
+#dmg-layer .dmg-num.kill {
+  color: #ff6a7a;
+  font-size: 22px;
+  text-shadow: 0 0 12px rgba(255, 59, 74, 0.85), 0 1px 2px #000;
+}
+@keyframes dmgFloat {
+  0% { opacity: 0; transform: translate(-50%, -40%) scale(0.7); }
+  15% { opacity: 1; transform: translate(-50%, -55%) scale(1.08); }
+  100% { opacity: 0; transform: translate(-50%, -120%) scale(0.95); }
+}
+#streak-toast {
+  position: absolute;
+  left: 50%;
+  top: 26%;
+  transform: translate(-50%, -50%) scale(0.9);
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: #fff;
+  text-shadow: 0 0 18px rgba(255, 106, 61, 0.75), 0 2px 8px #000;
+  background: linear-gradient(90deg, transparent, rgba(0,0,0,0.55), transparent);
+  padding: 10px 28px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 19;
+  transition: opacity 100ms ease, transform 140ms ease;
+}
+#streak-toast.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+#streak-toast .streak-sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  color: var(--accent);
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  #minimap { width: 96px; height: 112px; left: 10px; bottom: 96px; }
+  #minimap-canvas { width: 96px; height: 96px; }
+  #streak-toast { font-size: 16px; padding: 8px 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #dmg-layer .dmg-num { animation: none; opacity: 0.9; }
+  #streak-toast { transition: none; }
+}

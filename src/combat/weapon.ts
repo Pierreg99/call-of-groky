@@ -88,6 +88,11 @@ function matKit() {
 function finishViewModel(
   root: THREE.Group,
   muzzlePos: THREE.Vector3,
+  tint: { flash: number; core: number; light: number } = {
+    flash: 0xfff0c0,
+    core: 0xfff8e0,
+    light: 0xffcc88,
+  },
 ): ViewModelBuilt {
   for (const c of root.children) {
     const mesh = c as THREE.Mesh;
@@ -102,7 +107,7 @@ function finishViewModel(
   root.add(muzzle);
 
   const flashMat = new THREE.MeshBasicMaterial({
-    color: 0xfff0c0,
+    color: tint.flash,
     transparent: true,
     opacity: 0,
     depthWrite: false,
@@ -113,7 +118,7 @@ function finishViewModel(
   root.add(flash);
 
   const coreMat = new THREE.MeshBasicMaterial({
-    color: 0xfff8e0,
+    color: tint.core,
     transparent: true,
     opacity: 0,
     depthWrite: false,
@@ -123,7 +128,7 @@ function finishViewModel(
   flashCore.position.copy(muzzle.position);
   root.add(flashCore);
 
-  const flashLight = new THREE.PointLight(0xffcc88, 0, 8, 2);
+  const flashLight = new THREE.PointLight(tint.light, 0, 8, 2);
   flashLight.position.copy(muzzle.position);
   root.add(flashLight);
 
@@ -388,7 +393,11 @@ function buildSmgViewModel(): ViewModelBuilt {
     root.add(f);
   }
 
-  return finishViewModel(root, new THREE.Vector3(0, 0.03, -0.5));
+  return finishViewModel(root, new THREE.Vector3(0, 0.03, -0.5), {
+    flash: 0xff7a3d,
+    core: 0xffd0a0,
+    light: 0xff6a3d,
+  });
 }
 
 export const RIFLE_STATS: WeaponStats = {
@@ -466,7 +475,7 @@ export class Firearm {
   private readonly effects: CombatEffects;
   private readonly worldObjects: THREE.Object3D[] = [];
   private enemies: EnemyTarget[] = [];
-  private onHitEnemy: ((e: EnemyTarget, killed: boolean) => void) | null = null;
+  private onHitEnemy: ((e: EnemyTarget, killed: boolean, damage: number) => void) | null = null;
   private onHud: (() => void) | null = null;
   private motionScale = 1;
   private wasAds = false;
@@ -538,7 +547,7 @@ export class Firearm {
     this.enemies = enemies;
   }
 
-  setCallbacks(onHitEnemy: (e: EnemyTarget, killed: boolean) => void, onHud: () => void): void {
+  setCallbacks(onHitEnemy: (e: EnemyTarget, killed: boolean, damage: number) => void, onHud: () => void): void {
     this.onHitEnemy = onHitEnemy;
     this.onHud = onHud;
   }
@@ -593,7 +602,7 @@ export class Firearm {
     this.flash.scale.setScalar(flashScale + Math.random() * 0.55);
     this.flashCore.scale.setScalar(0.7 + Math.random() * 0.45);
 
-    gameAudio.play('gunshot');
+    gameAudio.play(this.stats.kind === 'smg' ? 'gunshotSmg' : 'gunshot');
 
     const spread = THREE.MathUtils.lerp(this.stats.spread, this.stats.adsSpread, this.adsBlend);
 
@@ -658,7 +667,7 @@ export class Firearm {
         });
         gameAudio.play('kill');
       }
-      this.onHitEnemy?.(hitEnemy, killed);
+      this.onHitEnemy?.(hitEnemy, killed, this.stats.damage);
     }
 
     this.onHud?.();
@@ -773,7 +782,7 @@ export class WeaponLoadout {
     for (const w of this.weapons) w.setWorldTargets(objects, enemies);
   }
 
-  setCallbacks(onHitEnemy: (e: EnemyTarget, killed: boolean) => void, onHud: () => void): void {
+  setCallbacks(onHitEnemy: (e: EnemyTarget, killed: boolean, damage: number) => void, onHud: () => void): void {
     for (const w of this.weapons) w.setCallbacks(onHitEnemy, onHud);
   }
 

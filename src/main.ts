@@ -6,7 +6,7 @@ import { buildArena } from './world/arena';
 import { applyEnvironment } from './world/env';
 import { CombatEffects } from './combat/effects';
 import { createLoadout } from './combat/weapon';
-import { createEnemies, type EnemyTarget } from './enemies/target';
+import { createEnemies, spawnEnemyAt, type EnemyTarget } from './enemies/target';
 import { loadSoldierAssets } from './enemies/gltfAssets';
 import { Hud } from './ui/hud';
 import { FpsCounter } from './ui/fps';
@@ -24,6 +24,9 @@ if (__CAPTURE_EARLY__) {
 }
 
 const OBJECTIVE_GOAL = 10;
+/** Wave reinforcements: at 5 kills and at 10 kills */
+const WAVE_AT_5 = 3;
+const WAVE_AT_10 = 4;
 
 async function boot(): Promise<void> {
   const gfx = new GameRenderer(canvas);
@@ -43,8 +46,15 @@ async function boot(): Promise<void> {
   const effects = new CombatEffects(gfx.scene);
   const loadout = createLoadout(gfx.camera, effects, assets);
   loadout.setMotionScale(gfx.motionScale);
-  const enemies = createEnemies(arena.spawnPoints, arena.colliders, arena.coverPoints, 4, assets);
+  const enemies: EnemyTarget[] = createEnemies(
+    arena.spawnPoints,
+    arena.colliders,
+    arena.coverPoints,
+    4,
+    assets,
+  );
   for (const e of enemies) gfx.scene.add(e.mesh);
+  let nextEnemyId = enemies.length + 1;
 
   const worldTargets: THREE.Object3D[] = [];
   arena.root.traverse((o) => {
@@ -56,6 +66,8 @@ async function boot(): Promise<void> {
   const fps = new FpsCounter();
   let kills = 0;
   let objectiveComplete = false;
+  let wave5Done = false;
+  let wave10Done = false;
 
   const syncHud = (): void => {
     hud.sync(player, loadout.active, loadout.slot);
@@ -69,18 +81,61 @@ async function boot(): Promise<void> {
   syncHud();
   hud.setAds(false);
 
+  const bindEnemyShots = (list: EnemyTarget[]): void => {
+    for (const e of list) {
+      e.setShotCallback((ev) => {
+        if (!player.isLocked || player.state.health <= 0) return;
+        player.takeDamage(ev.damage);
+        hud.flashDamage();
+        syncHud();
+        gameAudio.play('hit');
+      });
+    }
+  };
+  bindEnemyShots(enemies);
+
+  const spawnWave = (count: number, waveNum: number): void => {
+    const spawned: EnemyTarget[] = [];
+    for (let i = 0; i < count; i++) {
+      const sp = arena.spawnPoints[(nextEnemyId + i) % arena.spawnPoints.length]!.clone();
+      // Slight jitter so they don't stack
+      sp.x += (Math.random() - 0.5) * 2.5;
+      sp.z += (Math.random() - 0.5) * 2.5;
+      const e = spawnEnemyAt(nextEnemyId++, sp, arena.colliders, arena.coverPoints, assets);
+      e.state = 'chase';
+      enemies.push(e);
+      gfx.scene.add(e.mesh);
+      spawned.push(e);
+    }
+    bindEnemyShots(spawned);
+    loadout.setWorldTargets(worldTargets, enemies);
+    hud.showWaveToast(waveNum, count);
+    gameAudio.play('kill');
+  };
+
   // Killcam-lite: brief FOV punch + timescale dip
   let killPunch = 0;
   let timeScale = 1;
 
   loadout.setCallbacks(
-    (enemy: EnemyTarget, killed: boolean) => {
+    (enemy: EnemyTarget, killed: boolean, damage: number) => {
       hud.showHitmarker();
+      const hitPos = enemy.mesh.position.clone();
+      hitPos.y += 1.35;
+      hud.showDamageNumber(gfx.camera, hitPos, damage, killed);
       if (killed) {
         hud.pushKill(String(enemy.id));
         killPunch = 1;
         timeScale = 0.35;
         kills += 1;
+        if (!wave5Done && kills >= 5) {
+          wave5Done = true;
+          spawnWave(WAVE_AT_5, 2);
+        }
+        if (!wave10Done && kills >= 10) {
+          wave10Done = true;
+          spawnWave(WAVE_AT_10, 3);
+        }
         if (!objectiveComplete && kills >= OBJECTIVE_GOAL) {
           objectiveComplete = true;
           hud.showPickup('OBJECTIVE COMPLETE');
@@ -90,16 +145,6 @@ async function boot(): Promise<void> {
     },
     () => syncHud(),
   );
-
-  for (const e of enemies) {
-    e.setShotCallback((ev) => {
-      if (!player.isLocked || player.state.health <= 0) return;
-      player.takeDamage(ev.damage);
-      hud.flashDamage();
-      syncHud();
-      gameAudio.play('hit');
-    });
-  }
 
   let firing = false;
   let adsHeld = false;
@@ -244,6 +289,16 @@ async function boot(): Promise<void> {
 
     hud.setFiring(firing && player.isLocked);
     hud.updateCompass(gfx.camera, pos, arena.objectivePoint);
+    hud.updateMinimap(
+      gfx.camera,
+      pos,
+      arena.objectivePoint,
+      enemies.map((e) => ({
+        x: e.mesh.position.x,
+        z: e.mesh.position.z,
+        alive: e.alive && e.mesh.visible,
+      })),
+    );
     hud.update(dt);
 
     // Subtle ammo crate bob
@@ -287,28 +342,33 @@ async function boot(): Promise<void> {
       gfx.camera.rotation.set(-0.1, 0.28, 0);
       if (enemies[0]) {
         enemies[0].mesh.position.set(11.5, 0, -14.0);
-        enemies[0].mesh.rotation.y = Math.PI + 0.35;
         enemies[0].state = 'shoot';
+        enemies[0].snapFaceToward(player.object.position);
         for (let i = 0; i < 28; i++) enemies[0].update(1 / 30, 1 + i / 30, player.object.position, true);
+        enemies[0].snapFaceToward(player.object.position);
       }
       if (enemies[1]) {
         enemies[1].mesh.position.set(14.2, 0, -13.5);
-        enemies[1].mesh.rotation.y = Math.PI - 0.2;
         enemies[1].state = 'cover';
+        enemies[1].snapFaceToward(player.object.position);
         for (let i = 0; i < 28; i++) enemies[1].update(1 / 30, 1 + i / 30, player.object.position, true);
+        enemies[1].snapFaceToward(player.object.position);
       }
       if (enemies[2]) {
         enemies[2].mesh.position.set(9.5, 0, -12.5);
-        enemies[2].mesh.rotation.y = Math.PI + 0.1;
         enemies[2].state = 'chase';
+        enemies[2].snapFaceToward(player.object.position);
         for (let i = 0; i < 20; i++) enemies[2].update(1 / 30, 1 + i / 30, player.object.position, true);
+        enemies[2].snapFaceToward(player.object.position);
       }
     }
     if (__CAPTURE__ === 'combat') {
-      player.object.position.set(4.0, 1.65, 8.5);
-      gfx.camera.rotation.set(-0.06, 0.08, 0);
-      // Show SMG in combat shot for dual-weapon identity
+      // Close combat: player slightly elevated, enemies between camera and mid-ground, facing camera
+      player.object.position.set(3.2, 1.72, 9.2);
+      gfx.camera.rotation.set(-0.08, 0.02, 0);
       loadout.select(2);
+      syncHud();
+      kills = 3;
       syncHud();
     }
     if (__CAPTURE__ === 'hud') {
@@ -318,41 +378,63 @@ async function boot(): Promise<void> {
       syncHud();
     }
     if (__CAPTURE__ === 'tower') {
-      // Deck-level composition looking out over aisle + consoles
       player.object.position.set(12, 4.9, -16.5);
       gfx.camera.rotation.set(-0.18, 0.05, 0);
       if (enemies[0]) {
         enemies[0].mesh.position.set(13.5, 3.55, -18.5);
-        enemies[0].mesh.rotation.y = Math.PI + 0.4;
         enemies[0].state = 'cover';
+        enemies[0].snapFaceToward(player.object.position);
         for (let i = 0; i < 30; i++) enemies[0].update(1 / 30, 1 + i / 30, player.object.position, true);
+        enemies[0].snapFaceToward(player.object.position);
       }
     }
-    const steps = __CAPTURE__ === 'combat' ? 30 : 60;
+    const steps = __CAPTURE__ === 'combat' ? 20 : 60;
     for (let i = 0; i < steps; i++) {
       const dt = 1 / 30;
       elapsed += dt;
       for (const e of enemies) e.update(dt, elapsed, player.object.position, true);
     }
-    if (__CAPTURE__ === 'combat' && enemies[0]) {
-      enemies[0].mesh.position.set(4.2, 0, 5.0);
-      enemies[0].mesh.rotation.y = Math.PI;
-      enemies[0].state = 'shoot';
-      for (let i = 0; i < 45; i++) enemies[0].update(1 / 20, 2 + i / 20, player.object.position, true);
-      if (enemies[1]) {
-        enemies[1].mesh.position.set(6.0, 0, 4.2);
-        enemies[1].mesh.rotation.y = Math.PI + 0.35;
-        enemies[1].state = 'cover';
-        for (let i = 0; i < 20; i++) enemies[1].update(1 / 30, 2 + i / 30, player.object.position, true);
-      }
-      if (enemies[2]) {
-        enemies[2].mesh.position.set(2.4, 0, 3.5);
-        enemies[2].mesh.rotation.y = Math.PI - 0.4;
-        enemies[2].state = 'chase';
-        for (let i = 0; i < 20; i++) enemies[2].update(1 / 30, 2 + i / 30, player.object.position, true);
-      }
+    if (__CAPTURE__ === 'combat') {
+      // Place AFTER warmup; force frontal silhouettes (chest accent / helmet toward camera)
+      const poseCombat = (
+        e: EnemyTarget,
+        x: number,
+        z: number,
+        state: 'shoot' | 'cover' | 'chase',
+        pose: 'aim' | 'cover' | 'walk',
+        iters: number,
+      ): void => {
+        e.mesh.position.set(x, 0, z);
+        e.state = state;
+        e.snapFaceToward(player.object.position);
+        for (let i = 0; i < iters; i++) {
+          e.update(1 / 24, 2.5 + i / 24, player.object.position, true);
+        }
+        e.mesh.position.set(x, 0, z);
+        e.snapFaceToward(player.object.position);
+        e.snapPose(pose);
+      };
+      if (enemies[0]) poseCombat(enemies[0], 3.2, 6.2, 'shoot', 'aim', 40);
+      if (enemies[1]) poseCombat(enemies[1], 5.1, 5.5, 'cover', 'cover', 28);
+      if (enemies[2]) poseCombat(enemies[2], 1.5, 5.0, 'shoot', 'aim', 28);
+      hud.showDamageNumber(
+        gfx.camera,
+        new THREE.Vector3(3.2, 1.45, 6.2),
+        18,
+        false,
+      );
     }
     hud.updateCompass(gfx.camera, player.object.position, arena.objectivePoint);
+    hud.updateMinimap(
+      gfx.camera,
+      player.object.position,
+      arena.objectivePoint,
+      enemies.map((e) => ({
+        x: e.mesh.position.x,
+        z: e.mesh.position.z,
+        alive: e.alive && e.mesh.visible,
+      })),
+    );
     (window as unknown as { __COG_READY__?: boolean }).__COG_READY__ = true;
   }
 
@@ -361,7 +443,7 @@ async function boot(): Promise<void> {
   requestAnimationFrame(frame);
 
   console.info(
-    `%cCall of Groky%c loop6 quality=${gfx.quality.preset} aa=${gfx.quality.postAA} bloom=${gfx.quality.bloom} ssao=${gfx.quality.ssao} gltf=${assets.ok} weapons=${loadout.weapons.length}`,
+    `%cCall of Groky%c loop7 quality=${gfx.quality.preset} aa=${gfx.quality.postAA} bloom=${gfx.quality.bloom} ssao=${gfx.quality.ssao} gltf=${assets.ok} weapons=${loadout.weapons.length} enemies=${enemies.length}`,
     'color:#5ce1ff;font-weight:bold',
     'color:#8899aa',
   );

@@ -375,9 +375,22 @@ export class EnemyTarget {
     pos.z = THREE.MathUtils.clamp(pos.z, -27, 27);
   }
 
+  /** Instant yaw toward world point (capture / wave spawn posing). */
+  snapFaceToward(target: THREE.Vector3): void {
+    const dx = target.x - this.mesh.position.x;
+    const dz = target.z - this.mesh.position.z;
+    if (dx * dx + dz * dz < 1e-6) return;
+    // +PI: mesh -Z toward target so helmet/gun face camera (beacon sits on +Z)
+    this.mesh.rotation.y = Math.atan2(dx, dz) + Math.PI;
+  }
+
+  snapPose(pose: SoldierPose): void {
+    this.rig.setPose(pose, true);
+  }
+
   private faceToward(dir: THREE.Vector3, dt: number): void {
     if (dir.lengthSq() < 1e-6) return;
-    const yaw = Math.atan2(dir.x, dir.z);
+    const yaw = Math.atan2(dir.x, dir.z) + Math.PI;
     let delta = yaw - this.mesh.rotation.y;
     while (delta > Math.PI) delta -= Math.PI * 2;
     while (delta < -Math.PI) delta += Math.PI * 2;
@@ -408,4 +421,15 @@ export function createEnemies(
     enemies.push(new EnemyTarget(i + 1, spawns[i].clone(), colliders, coverPoints, 100, assets));
   }
   return enemies;
+}
+
+/** Spawn one reinforcement at a world position (wave system). */
+export function spawnEnemyAt(
+  id: number,
+  position: THREE.Vector3,
+  colliders: THREE.Box3[],
+  coverPoints: CoverPoint[],
+  assets: SoldierAssets | null = null,
+): EnemyTarget {
+  return new EnemyTarget(id, position.clone(), colliders, coverPoints, 100, assets);
 }
