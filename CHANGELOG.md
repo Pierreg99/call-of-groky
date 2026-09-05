@@ -12,7 +12,9 @@ Dates are Europe/Berlin calendar days (project ship day **2026-09-05**).
 - **cannon-es** player capsule + static world colliders (`src/engine/physics.ts`); kinematic AABB kept as fallback
 - Directional damage indicators (screen-edge chevrons from hit origin)
 - Film grain post pass (quality-scaled; reduced-motion offs) + CSS grain fallback
-- Modular level pieces: `helpers.ts`, `tower.ts`, `cover.ts`, `ramp.ts`, `windowWall.ts` (wired in `arena.ts`)
+- Modular level pieces: `helpers`, `tower`, `cover`, `ramp`, `windowWall`, `hangar`, `bunker` (wired in `arena.ts`)
+- Physics: stabler FloorPad statics + grounded heuristic; stickier capsule accel
+- HUD: critical/warn health fill pulse; capped directional damage chevrons
 - Stronger head-bob / land thump, strafe camera roll, sprint FOV widen, viewmodel look-inertia sway
 - Docs: `IMPROVE_NOTES.md` (Boty gap table); Ship honesty unchanged (GO / CoD FAIL)
 

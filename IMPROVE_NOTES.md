@@ -3,35 +3,47 @@
 Branch: improve/compare-boty · Date: 2026-09-05 (Europe/Berlin)
 
 COMPARE_GROKY.md lives in Boty (read-only reference); Groky documents the port here.
+Do **not** touch `call-of-boty` or `castle-landscape` from this branch.
 
 ## Kept (honesty)
 
-- Touch + Ship honesty unchanged: Browser-AAA **GO** / CoD visual **FAIL**
-- Loop 8 gameplay (defend tower, settings, inspect, scout)
-- Touch overlay + desktop PointerLock paths intact
+| Claim | Status |
+|-------|--------|
+| Touch overlay + desktop PointerLock | **Intact** — no regressions intended |
+| Ship Browser-AAA **GO** | **Unchanged** (User Accept / SwiftShader-only) |
+| CoD visual parity | **FAIL** — still honest, not claimed PASS |
+| Loop 8 gameplay | Defend tower / settings / inspect / scout kept |
 
-## Gaps closed (this branch)
+## Gaps closed on this branch
 
-| Boty advantage | Groky status |
-|----------------|--------------|
-| cannon-es player body | **Done** — capsule + static Box3 colliders; AABB floors as fallback |
-| Modular greybox kit | **In progress** — helpers, tower, cover clusters, ramp/platform, window-wall |
-| Directional hit / grain | **Done** — damage chevrons + quality-scaled film grain + SMAA |
-| Cam bob / sprint FOV | **Done** — bob/roll, land thump, sprint FOV, viewmodel look-inertia |
+| Boty advantage (COMPARE) | Groky status |
+|--------------------------|--------------|
+| cannon-es player + static world | **Done** — `PhysicsWorld` capsule + Box3 / FloorPad statics; kinematic AABB fallback |
+| Modular greybox kit | **Done** — helpers, tower, cover, ramp, windowWall, hangar, bunker |
+| Feel: bob / roll / sprint FOV | **Done** — stronger bob, land thump, strafe roll, sprint FOV, viewmodel inertia |
+| Hit feedback / grain | **Done** — directional chevrons (capped), critical HP pulse, film grain + SMAA |
 
-## Still Boty-ahead (not wiped / not claimed)
+## Still Boty-ahead (not claimed done)
 
-- Enemy Search FSM after LOS loss
-- Full procedural-only asset path (zero network fetches)
-- Haptics (gamepad vibrate + phone fallback)
-- ITERATIONS.md weakness log discipline
+1. Enemy **Search** FSM after LOS loss
+2. Full **procedural-only** asset path (zero network fetches)
+3. **Haptics** (gamepad `vibrationActuator` + phone vibrate fallback)
+4. **ITERATIONS.md** weakness-log discipline
 
-## Pieces map
+## Pieces map (`src/world/pieces/`)
 
-- `world/pieces/helpers.ts` — boxMesh, colliders, floor pads, decals
-- `world/pieces/tower.ts` — control tower objective
-- `world/pieces/cover.ts` — crate clusters, dens cover, barrels, AI anchors
-- `world/pieces/ramp.ts` — raised platform + stepped FloorPads
-- `world/pieces/windowWall.ts` — mid courtyard panel + window gap + neon
+| Module | Role |
+|--------|------|
+| `helpers.ts` | boxMesh, colliders, floor pads, contact blobs, floor decals |
+| `tower.ts` | Control tower objective landmark |
+| `cover.ts` | Crate clusters, dens cover, barrels, AI cover anchors |
+| `ramp.ts` | Raised platform + stepped FloorPads |
+| `windowWall.ts` | Mid courtyard panel + window gap + neon |
+| `hangar.ts` | East hangar bay walls |
+| `bunker.ts` | West bunker room + doorway neon |
 
-Boty work not wiped. Build must stay green. Do not merge until polish pass complete.
+## Physics note
+
+Ramp walkability stays on stepped `FloorPad`s (visual ramp mesh is rotated and not a reliable cannon box). Static pad boxes skip degenerate sizes; grounded uses contact events + near-floor heuristic.
+
+Boty work not wiped. Build must stay green. PR stays open (do not merge from agent).

@@ -295,10 +295,13 @@ export class FpsController {
   private updatePhysics(dt: number, wish: THREE.Vector3, _speed: number, wantJump: boolean): void {
     const body = this.physBody!;
     const phys = this.phys!;
-    const grounded = phys.consumeGrounded() || body.velocity.y >= -0.35 && body.position.y < this.capsuleHalf + 0.15;
+    const grounded =
+      phys.consumeGrounded() ||
+      (body.velocity.y >= -0.45 && body.position.y < this.capsuleHalf + 0.22);
     this.state.grounded = grounded;
 
-    const accel = grounded ? 22 : 7;
+    // Stickier ground accel; slightly more air strafe than kinematic for Boty feel
+    const accel = grounded ? 24 : 8.5;
     const vx = THREE.MathUtils.damp(body.velocity.x, wish.x, accel, dt);
     const vz = THREE.MathUtils.damp(body.velocity.z, wish.z, accel, dt);
     body.velocity.x = vx;
