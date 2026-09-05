@@ -143,7 +143,10 @@ export class Hud {
     const hp = player.state.health;
     const pct = (hp / player.state.maxHealth) * 100;
     this.healthFill.style.width = `${pct}%`;
+    this.healthFill.classList.toggle('critical', pct <= 30);
+    this.healthFill.classList.toggle('warn', pct > 30 && pct <= 55);
     this.healthText.textContent = String(Math.round(hp));
+    this.healthText.classList.toggle('critical', pct <= 30);
     this.ammoMag.textContent = String(weapon.mag);
     this.ammoMag.classList.toggle('low', weapon.mag <= Math.max(5, Math.floor(weapon.stats.magSize * 0.25)));
     this.ammoReserve.textContent = String(weapon.reserve);
@@ -360,14 +363,18 @@ export class Hud {
     const ang = Math.atan2(cross, dot);
     const deg = (-ang * 180) / Math.PI;
 
+    // Cap stacked chevrons so spam fire does not flood the HUD
+    while (this.dmgDirs.childElementCount >= 4) {
+      this.dmgDirs.firstElementChild?.remove();
+    }
     const el = document.createElement('div');
     el.className = 'dmg-dir show';
     el.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
     this.dmgDirs.appendChild(el);
     window.setTimeout(() => {
       el.classList.remove('show');
-      window.setTimeout(() => el.remove(), 120);
-    }, 420);
+      window.setTimeout(() => el.remove(), 140);
+    }, 480);
   }
 
   showKillcam(name: string): void {

@@ -64,21 +64,26 @@ export class PhysicsWorld {
     this.world.addBody(floor);
   }
 
-  /** Raised floor pads as static boxes (platforms / decks). */
+  /** Raised floor pads as static boxes (platforms / decks / ramp steps). */
   addFloorPads(floors: FloorPad[]): void {
     for (const f of floors) {
       const w = Math.max(0.2, f.maxX - f.minX);
       const d = Math.max(0.2, f.maxZ - f.minZ);
-      const h = 0.35;
+      // Skip degenerate pads that would jitter the capsule
+      if (w < 0.25 || d < 0.25) continue;
+      const h = Math.min(0.45, Math.max(0.28, f.topY * 0.35 + 0.2));
       const cx = (f.minX + f.maxX) / 2;
       const cz = (f.minZ + f.maxZ) / 2;
       const cy = f.topY - h / 2;
+      if (cy < -0.05) continue;
       const body = new CANNON.Body({
         mass: 0,
         type: CANNON.Body.STATIC,
         shape: new CANNON.Box(new CANNON.Vec3(w / 2, h / 2, d / 2)),
         position: new CANNON.Vec3(cx, cy, cz),
       });
+      body.collisionFilterGroup = 1;
+      body.collisionFilterMask = 1 | 2;
       this.world.addBody(body);
     }
   }
@@ -136,8 +141,13 @@ export class PhysicsWorld {
 
   private isNearFloor(): boolean {
     if (!this.playerBody) return false;
-    // Ray-ish fallback: low vertical speed + near predicted floor
-    return this.playerBody.velocity.y >= -0.8 && this.playerBody.position.y < 1.35;
+    const body = this.playerBody;
+    // Low vertical speed + capsule center near a walkable height band
+    const nearGround =
+      body.velocity.y >= -1.2 && body.position.y < 1.45 && body.position.y > 0.35;
+    const onPlatform =
+      body.velocity.y >= -1.5 && body.position.y < 4.2 && body.position.y > 1.2;
+    return nearGround || (onPlatform && Math.abs(body.velocity.y) < 0.55);
   }
 
   step(dt: number): void {

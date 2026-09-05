@@ -155,6 +155,23 @@ html, body, #app {
   transition: width 120ms ease-out;
 }
 
+
+#health-fill.warn {
+  background: linear-gradient(90deg, #6b5a1a, #e6c35c);
+  box-shadow: 0 0 12px rgba(230, 195, 92, 0.45);
+}
+#health-fill.critical {
+  background: linear-gradient(90deg, #6b1a22, var(--danger));
+  box-shadow: 0 0 14px rgba(255, 59, 74, 0.55);
+  animation: hp-crit-pulse 0.9s ease-in-out infinite;
+}
+#health-text.critical { color: var(--danger); text-shadow: 0 0 12px rgba(255, 59, 74, 0.45); }
+@keyframes hp-crit-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.25); }
+}
+html.reduced-motion #health-fill.critical { animation: none; }
+
 #health-text {
   font-family: var(--mono);
   font-size: 16px;
