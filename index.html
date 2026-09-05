@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Call of Groky</title>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game"></canvas>
+      <div id="hud">
+        <div id="crosshair"></div>
+        <div id="hitmarker"></div>
+        <div id="vignette"></div>
+        <div id="top-bar">
+          <div id="health-wrap">
+            <span class="label">HP</span>
+            <div id="health-bar"><div id="health-fill"></div></div>
+            <span id="health-text">100</span>
+          </div>
+        </div>
+        <div id="bottom-bar">
+          <div id="ammo">
+            <span id="ammo-mag">30</span>
+            <span class="sep">/</span>
+            <span id="ammo-reserve">90</span>
+            <span id="weapon-name">GROKY-16</span>
+          </div>
+        </div>
+        <div id="kill-feed"></div>
+        <div id="overlay" class="visible">
+          <div class="panel">
+            <h1>CALL OF <span>GROKY</span></h1>
+            <p class="tag">PHASE 1 — URBAN GREYBOX</p>
+            <p class="hint">Click to lock pointer · WASD move · Shift sprint · Ctrl crouch · Space jump · LMB fire · R reload</p>
+            <button id="start-btn" type="button">DEPLOY</button>
+          </div>
+        </div>
+        <div id="damage-flash"></div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

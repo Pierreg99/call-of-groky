@@ -1,0 +1,22 @@
+{
+  "name": "call-of-groky",
+  "version": "0.1.0",
+  "description": "Call of Groky — cinematic Three.js FPS greybox scaffold",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "keywords": ["three.js", "fps", "vite", "typescript"],
+  "author": "Pierreg99",
+  "license": "MIT",
+  "dependencies": {
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.170.0",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  }
+}
