@@ -2,14 +2,20 @@
 
 <img src="./assets/readme-banner.svg" alt="call-of-groky" width="100%">
 
-# call-of-groky
+# Call of Groky
 
-Call of Groky — high-end Three.js FPS (browser)
-
-[![branch](https://img.shields.io/badge/branch-main-7EB8C9?style=flat-square)](https://github.com/Pierreg99/call-of-groky)
-[![sichtbarkeit](https://img.shields.io/badge/sichtbarkeit-öffentlich-141414?style=flat-square&labelColor=0A0A0A)](https://github.com/Pierreg99/call-of-groky)
-[![sprache](https://img.shields.io/badge/sprache-TypeScript-2A2A28?style=flat-square&labelColor=0A0A0A)](https://github.com/Pierreg99/call-of-groky)
-
+<p><strong>Call of Groky: Three.js-FPS im Browser.</strong></p>
+<p>
+<img alt="TypeScript: 88%" src="https://img.shields.io/badge/TypeScript-88%25-3178C6?style=for-the-badge&logo=typescript&logoColor=white">
+<img alt="CSS: 10%" src="https://img.shields.io/badge/CSS-10%25-1572B6?style=for-the-badge&logo=css3&logoColor=white">
+<img alt="HTML: 2%" src="https://img.shields.io/badge/HTML-2%25-E34F26?style=for-the-badge&logo=html5&logoColor=white">
+<img alt="Lizenz: MIT" src="https://img.shields.io/badge/Lizenz-MIT-2E7D32?style=for-the-badge">
+<img alt="Sichtbarkeit: Öffentlich" src="https://img.shields.io/badge/Sichtbarkeit-%C3%96ffentlich-0B7285?style=for-the-badge">
+</p>
+<p>
+<a href="https://github.com/Pierreg99/call-of-groky/actions/workflows/deploy.yml"><img alt="deploy.yml" src="https://github.com/Pierreg99/call-of-groky/actions/workflows/deploy.yml/badge.svg"></a>
+</p>
+<p><a href="#schnellstart">Schnellstart</a> · <a href="#projektstruktur">Projektstruktur</a> · <a href="#english-summary">English</a></p>
 </div>
 
 <table>
@@ -39,23 +45,151 @@ Der Default-Branch `main` ist die Fläche, die zählt. Was nicht in diesem Baum 
 </tr>
 </table>
 
-## Lesen
+---
 
-1. Default-Branch öffnen.
-2. Nur Dateien in diesem Baum als Beleg nehmen.
-3. Issues und Diskussionen nur nutzen, wenn sie im Repo eingeschaltet sind.
+## Inhaltsverzeichnis
 
-## Grenze
+- [Bestand und Fakten](#bestand)
+- [Überblick](#überblick)
+- [Features](#features)
+- [Schnellstart](#schnellstart)
+- [Architektur](#architektur)
+- [Projektstruktur](#projektstruktur)
+- [Dokumentation](#dokumentation)
+- [Projektdetails](#projektdetails)
+- [English summary](#english-summary)
+- [Lizenzhinweis](#lizenzhinweis)
 
-Keine Qualitätszahl, kein Paketstand und keine Runtime, die nicht als Datei in diesem Repo steht.
+## Überblick
 
-<p align="center"><sub>Fläche nach Cryo Core Lite v1.5 · Tokens #0A0A0A / #141414 / #7EB8C9</sub></p>
+Call of Groky: Three.js-FPS im Browser.
 
+| Merkmal | Wert |
+| --- | --- |
+| Sprachen | TypeScript (88%), CSS (10%), HTML (2%) |
+| Dateien im Repository | 77 |
+| Einstiegspunkte | `index.html`, `src/main.ts` |
+| Version (`package.json`) | 0.1.1 |
+| CI-Workflows | 1 |
+| Lizenz | [LICENSE](LICENSE) |
+
+## Features
+
+- 3D-Rendering mit Three.js
+- Entwicklungsserver und Build mit Vite
+- Physik mit cannon-es
+- Typprüfung mit TypeScript
+- Canvas-2D-Rendering
+- Klangerzeugung über die Web Audio API
+- Lokale Speicherung im Browser (localStorage)
+- Touch- und Pointer-Steuerung
+- Echtzeit-Render-Schleife (requestAnimationFrame)
+- Automatisierung über GitHub Actions: `deploy.yml`
+- Veröffentlichung über GitHub Pages
+- 1 3D-Modelle (GLB/glTF)
+- 14 Markdown-Dokumente
+
+## Schnellstart
+
+```bash
+git clone https://github.com/Pierreg99/call-of-groky.git
+cd call-of-groky
+```
+
+**Node.js**
+
+```bash
+npm install
+npm run dev
+npm run build
+npm run preview
+```
 
 <details>
-<summary>Bisheriger README-Text</summary>
+<summary>Alle Skripte aus <code>package.json</code></summary>
 
-# Call of Groky
+| Skript | Befehl |
+| --- | --- |
+| `dev` | `vite` |
+| `build` | `tsc && vite build` |
+| `preview` | `vite preview` |
+
+</details>
+
+## Architektur
+
+Übersicht der wichtigsten Verzeichnisse nach Anzahl der enthaltenen Dateien.
+
+```mermaid
+flowchart LR
+    R(["call-of-groky"])
+    R --> D0["src/<br/>26 Dateien"]
+    R --> D1["public/<br/>23 Dateien"]
+    R --> D2["docs/<br/>13 Dateien"]
+    R --> D3["assets/<br/>1 Datei"]
+    E{{"Einstieg: index.html"}}
+    E -.-> R
+    CI[["GitHub Actions<br/>1 Workflows"]] -.-> R
+```
+
+## Projektstruktur
+
+```text
+call-of-groky/
+├── .github/  (1 Datei)
+│   └── workflows/
+├── assets/  (1 Datei)
+│   └── readme-banner.svg
+├── docs/  (13 Dateien)
+│   ├── credits/
+│   ├── shots/
+│   ├── COMPARE_BOTY.md
+│   ├── gallery.md
+│   ├── index.html
+│   ├── LICENSES.md
+│   └── … (3 weitere)
+├── public/  (23 Dateien)
+│   ├── hdri/
+│   ├── models/
+│   └── textures/
+├── src/  (26 Dateien)
+│   ├── audio/
+│   ├── combat/
+│   ├── enemies/
+│   ├── engine/
+│   ├── player/
+│   ├── ui/
+│   └── … (4 weitere)
+├── .gitignore
+├── CHANGELOG.md
+├── CRITIC.md
+├── IMPROVE_NOTES.md
+├── index.html
+├── LICENSE
+├── package-lock.json
+├── package.json
+├── README.md
+├── RELEASE.md
+├── tsconfig.json
+└── vite.config.ts
+```
+
+## Dokumentation
+
+- [CHANGELOG.md](CHANGELOG.md)
+- [CRITIC.md](CRITIC.md)
+- [IMPROVE_NOTES.md](IMPROVE_NOTES.md)
+- [RELEASE.md](RELEASE.md)
+- [docs/COMPARE_BOTY.md](docs/COMPARE_BOTY.md)
+- [docs/gallery.md](docs/gallery.md)
+- [docs/LICENSES.md](docs/LICENSES.md)
+- [docs/PLAN.md](docs/PLAN.md)
+- [docs/PROGRESS.md](docs/PROGRESS.md)
+- [docs/ROADMAP.md](docs/ROADMAP.md)
+
+## Projektdetails
+
+Der folgende Abschnitt übernimmt die bisherige Projektdokumentation.
 
 Cinematic **Three.js** FPS greybox — Loop 8 settings, defend-tower objective, weapon inspect, scout archetype, desktop + touch controls.
 
@@ -196,4 +330,12 @@ Qualität: Low / Medium / High (Schatten 512 / 1536 / 2048); PostFX (Bloom, SSAO
 
 MIT — see [LICENSE](./LICENSE). Third-party CC0 assets and library notices: [docs/LICENSES.md](./docs/LICENSES.md), [docs/credits/ATTRIBUTION.md](./docs/credits/ATTRIBUTION.md).
 
-</details>
+## English summary
+
+Call of Groky: Three.js FPS in the browser.
+
+Clone the repository and follow the commands in [Schnellstart](#schnellstart); the [project layout](#projektstruktur) shows where the code lives. Further documents are listed under [Dokumentation](#dokumentation).
+
+## Lizenzhinweis
+
+Siehe [LICENSE](LICENSE).
