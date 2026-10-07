@@ -1,3 +1,60 @@
+<div align="center">
+
+<img src="./assets/readme-banner.svg" alt="call-of-groky" width="100%">
+
+# call-of-groky
+
+Call of Groky — high-end Three.js FPS (browser)
+
+[![branch](https://img.shields.io/badge/branch-main-7EB8C9?style=flat-square)](https://github.com/Pierreg99/call-of-groky)
+[![sichtbarkeit](https://img.shields.io/badge/sichtbarkeit-öffentlich-141414?style=flat-square&labelColor=0A0A0A)](https://github.com/Pierreg99/call-of-groky)
+[![sprache](https://img.shields.io/badge/sprache-TypeScript-2A2A28?style=flat-square&labelColor=0A0A0A)](https://github.com/Pierreg99/call-of-groky)
+
+</div>
+
+<table>
+<tr>
+<td width="58%" valign="top">
+
+### Bestand
+
+Call of Groky — high-end Three.js FPS (browser)
+
+Der Default-Branch `main` ist die Fläche, die zählt. Was nicht in diesem Baum liegt, ist kein Feature dieses Repos.
+
+</td>
+<td width="42%" valign="top">
+
+### Fakten
+
+| Feld | Wert |
+| --- | --- |
+| Owner | Pierreg99 |
+| Branch | `main` |
+| Sichtbarkeit | öffentlich |
+| Sprache | TypeScript |
+| Archiv | nein |
+
+</td>
+</tr>
+</table>
+
+## Lesen
+
+1. Default-Branch öffnen.
+2. Nur Dateien in diesem Baum als Beleg nehmen.
+3. Issues und Diskussionen nur nutzen, wenn sie im Repo eingeschaltet sind.
+
+## Grenze
+
+Keine Qualitätszahl, kein Paketstand und keine Runtime, die nicht als Datei in diesem Repo steht.
+
+<p align="center"><sub>Fläche nach Cryo Core Lite v1.5 · Tokens #0A0A0A / #141414 / #7EB8C9</sub></p>
+
+
+<details>
+<summary>Bisheriger README-Text</summary>
+
 # Call of Groky
 
 Cinematic **Three.js** FPS greybox — Loop 8 settings, defend-tower objective, weapon inspect, scout archetype, desktop + touch controls.
@@ -138,3 +195,5 @@ Qualität: Low / Medium / High (Schatten 512 / 1536 / 2048); PostFX (Bloom, SSAO
 ## License
 
 MIT — see [LICENSE](./LICENSE). Third-party CC0 assets and library notices: [docs/LICENSES.md](./docs/LICENSES.md), [docs/credits/ATTRIBUTION.md](./docs/credits/ATTRIBUTION.md).
+
+</details>
