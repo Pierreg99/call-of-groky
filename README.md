@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="./assets/readme-banner.svg" alt="call-of-groky" width="100%">
+
 # Call of Groky
 
 <p><strong>Call of Groky: Three.js-FPS im Browser.</strong></p>
@@ -16,10 +18,38 @@
 <p><a href="#schnellstart">Schnellstart</a> · <a href="#projektstruktur">Projektstruktur</a> · <a href="#english-summary">English</a></p>
 </div>
 
+<table>
+<tr>
+<td width="58%" valign="top">
+
+### Bestand
+
+Call of Groky — high-end Three.js FPS (browser)
+
+Der Default-Branch `main` ist die Fläche, die zählt. Was nicht in diesem Baum liegt, ist kein Feature dieses Repos.
+
+</td>
+<td width="42%" valign="top">
+
+### Fakten
+
+| Feld | Wert |
+| --- | --- |
+| Owner | Pierreg99 |
+| Branch | `main` |
+| Sichtbarkeit | öffentlich |
+| Sprache | TypeScript |
+| Archiv | nein |
+
+</td>
+</tr>
+</table>
+
 ---
 
 ## Inhaltsverzeichnis
 
+- [Bestand und Fakten](#bestand)
 - [Überblick](#überblick)
 - [Features](#features)
 - [Schnellstart](#schnellstart)
@@ -37,7 +67,7 @@ Call of Groky: Three.js-FPS im Browser.
 | Merkmal | Wert |
 | --- | --- |
 | Sprachen | TypeScript (88%), CSS (10%), HTML (2%) |
-| Dateien im Repository | 76 |
+| Dateien im Repository | 77 |
 | Einstiegspunkte | `index.html`, `src/main.ts` |
 | Version (`package.json`) | 0.1.1 |
 | CI-Workflows | 1 |
@@ -96,6 +126,7 @@ flowchart LR
     R --> D0["src/<br/>26 Dateien"]
     R --> D1["public/<br/>23 Dateien"]
     R --> D2["docs/<br/>13 Dateien"]
+    R --> D3["assets/<br/>1 Datei"]
     E{{"Einstieg: index.html"}}
     E -.-> R
     CI[["GitHub Actions<br/>1 Workflows"]] -.-> R
@@ -107,6 +138,8 @@ flowchart LR
 call-of-groky/
 ├── .github/  (1 Datei)
 │   └── workflows/
+├── assets/  (1 Datei)
+│   └── readme-banner.svg
 ├── docs/  (13 Dateien)
 │   ├── credits/
 │   ├── shots/
